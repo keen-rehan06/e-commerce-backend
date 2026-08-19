@@ -80,6 +80,9 @@ export const checksLoginUser = async (req, res, next) => {
 export const isLoggedIn = async (req, res, next) => {
   let token;
   const authHeader = req.headers.authorizarion;
+  if(req.cookies.accessToken){
+    token = req.cookies.accessToken;
+  }else if(authHeader && auth)
   try {
   } catch (error) {}
 };
