@@ -1,0 +1,69 @@
+import mongoose from "mongoose";
+
+const userSchema = new mongoose.Schema({
+    name:{
+        type:String,
+        required:true,
+        trim:true
+    },
+    username:{
+        type:String,
+        required:true,
+        unique:true,
+        trim:true
+    },
+    email:{
+        type:String,
+        required:true,
+        unique:true,
+        trim:true
+    },
+    password:{
+        type:String,
+        required:true,
+        trim:true
+    },
+    mobile:{
+        type:String,
+        required:true,
+        unique:true       
+    },
+    token:{
+        type:String,
+        default:null
+    },
+    refreshToken:{
+        type:String,
+        default:null
+    },
+    isVerfied:{
+        type:Boolean,
+        default:false
+    },
+    isLoggedIn:{
+        type:Boolean,
+        default:false
+    },
+    profileImage:{
+        type:String,
+        default:null
+    },
+    order:[{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"order"
+    }],
+    cartProduct:[{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"cartProduct",
+    }],
+    role:[{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"role"
+    }],
+    purchaseHistory:[{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"purchase"
+    }],
+},{timestamps:true});
+
+export const userModel = new mongoose.model("user",userSchema)
