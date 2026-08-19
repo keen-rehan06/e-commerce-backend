@@ -82,7 +82,11 @@ export const isLoggedIn = async (req, res, next) => {
   const authHeader = req.headers.authorizarion;
   if(req.cookies.accessToken){
     token = req.cookies.accessToken;
-  }else if(authHeader && auth)
+  }else if(authHeader && authHeader.startsWith("Bearer ")){
+    token = authHeader.split(" ")[1];
+  }
+  if(!token) return res.status(404).send({message:"Please! Login First.",success:false});
   try {
+    
   } catch (error) {}
 };
