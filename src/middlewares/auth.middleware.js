@@ -87,6 +87,12 @@ export const isLoggedIn = async (req, res, next) => {
   }
   if(!token) return res.status(404).send({message:"Please! Login First.",success:false});
   try {
-    
-  } catch (error) {}
+    const decoded = jwt.verify(token,process.env.ACCESS_TOKEN_SECRET);
+    if(!decoded) return res.status(401).send({message:"Invalid or Expired Token",success:false});
+    req.user = decoded;
+    next();
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).send({message:"Internal Server Error",success:false,error});
+  }
 };

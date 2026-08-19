@@ -28,14 +28,6 @@ const userSchema = new mongoose.Schema({
         required:true,
         unique:true       
     },
-    token:{
-        type:String,
-        default:null
-    },
-    refreshToken:{
-        type:String,
-        default:null
-    },
     isVerfied:{
         type:Boolean,
         default:false

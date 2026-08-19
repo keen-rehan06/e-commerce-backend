@@ -14,10 +14,14 @@
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "fs": "^0.0.1-security",
+    "handlebars": "^4.7.9",
     "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.9.3",
-    "nodemailer": "^9.0.5"
+    "nodemailer": "^9.0.5",
+    "path": "^0.12.7",
+    "url": "^0.11.4"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
