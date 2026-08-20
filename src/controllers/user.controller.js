@@ -26,12 +26,6 @@ export const createUser = async (req,res) => {
       const token = generateToken(user);
       verifyEmail(token,email);
       const newCreatedUser = await userModel.findById(user.id).select("-password");
-      const redisUser = `user:${user._id}`;
-      await redis.hset(redisUser,{
-        id:user._id,
-        email:user.email,
-        isVerfied:user.isVerfied
-      });
       return res
       .status(201)
       .cookie("token",token)
@@ -43,4 +37,24 @@ export const createUser = async (req,res) => {
     }
 }
 
-// export 
+export const verifyUser = async(req,res) =>{ 
+  try {
+      let token = req.cookies.token;
+      if(!token) return res.status(401).send({message:"Token is not found!",success:false});
+      const decoded = jwt.verify(token,process.env.JWT_SECRET);
+      const user = await userModel.findById(decoded.id);
+      if(!user) return res.status(404).send({message:"User not found!",success:false})
+      user.isVerified = true;
+    await user.save();
+    return res.status(200).send({message:"User Verifed!",success:true});
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).send({message:"Internal Server Error.",success:false});
+}}
+
+export const loginUser = async(req,res) => {
+  try{
+    const {email,password} = req.body; 
+  }
+  catch(error){}
+}
