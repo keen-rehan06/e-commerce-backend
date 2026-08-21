@@ -56,10 +56,6 @@ export const checksLoginUser = async (req, res, next) => {
         .status(401)
         .send({ message: "All fields are required!", success: false });
     const user = await userModel.findOne({ email });
-    if (!user)
-      return res
-        .status(404)
-        .send({ message: "User not Found!", success: false });
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email))
       return res
