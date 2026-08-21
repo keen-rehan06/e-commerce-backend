@@ -4,6 +4,7 @@ import { configDotenv } from "dotenv";
 import { connectDb } from "./src/config/db/db.js";
 
 configDotenv({path:".env"});
+
 ;(()=>{
     try {
         await connectDb();

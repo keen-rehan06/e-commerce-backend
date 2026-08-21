@@ -1,4 +1,5 @@
 export const ROLE_HIERARCHY = {
+  
 SUPER_ADMIN :[
   
   // USER
@@ -221,5 +222,4 @@ CUSTOMER:[
 
   "NOTIFICATION_READ"
 ],
-
 }
