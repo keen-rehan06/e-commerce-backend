@@ -59,7 +59,10 @@ export const verifyUser = async (req, res) => {
         .send({ message: "User not found!", success: false });
     user.isVerified = true;
     await user.save();
-    return res.status(200).send({ message: "User Verifed!", success: true });
+    return res
+      .status(200)
+      .clearCookie("token")
+      .send({ message: "User Verifed!", success: true });
   } catch (error) {
     console.log(error.message);
     return res
@@ -72,7 +75,7 @@ export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await userModel.findOne({ email });
-        if (!user)
+    if (!user)
       return res
         .status(404)
         .send({ message: "Invalid Email or Password.", success: false });
@@ -107,16 +110,137 @@ export const loginUser = async (req, res) => {
       user._id.toString(),
       "EX",
       7 * 24 * 60 * 60,
-      "NX"
+      "NX",
     );
-       const newUser = await userModel.findById(user._id).select("-password");
-    return res.status(200).send({message:"User loggedIn successFully!",success:true,data:newUser})
+    const newUser = await userModel.findById(user._id).select("-password");
+    return res
+      .status(200)
+      .cookies("accessToken", accessToken)
+      .cookies("refreshToken", refreshToken)
+      .send({
+        message: "User loggedIn successFully!",
+        success: true,
+        data: newUser,
+      });
   } catch (error) {
     console.log(error.message);
-    return res.status(500).send({message:"Server Error",error});
+    return res.status(500).send({ message: "Server Error", error });
   }
 };
 
-/*
+export const logoutUser = async (req, res) => {
+  try {
+    const user = req.user.id;
+    const sessionKey = `session:${user}`;
+    await redis.del(sessionKey);
+    const refreshToken = req.cookies.refreshToken;
+    if (refreshToken) {
+      const refreshTokenHash = crypto
+        .createHash("sha256")
+        .update(refreshToken)
+        .digest("hex");
 
+      await redis.del(`refreshToken:${refreshTokenHash}`);
+    }
+    await userModel.findByIdAndUpdate(user, { isLoggedIn: false });
+    return res
+      .status(200)
+      .clearCookie("accessToken")
+      .clearCookie("refreshToken")
+      .send({ message: "User Logged Out!", success: true });
+  } catch (error) {
+    console.log(error.message);
+    return res
+      .status(500)
+      .send({ message: "User Logged Out Failed!", success: false, error });
+  }
+};
+
+export const refreshAccessToken = async (req, res) => {
+  try {
+    const refreshToken = req.cookies.refreshToken;
+    if (!refreshToken)
+      return res.status(401).send({
+        message: "refreshToken is missing. Please Login!",
+        success: false,
+      });
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+    const user = await userModel.findById(decoded.id);
+    if (!user)
+      return res
+        .status(404)
+        .send({ message: "User Not Found", success: false });
+    const hashRefreshToken = crypto
+      .createHash("sha256")
+      .update(refreshToken)
+      .digest("hex");
+    const redisRefreshToken = await redis.get(
+      `refreshToken:${hashRefreshToken}`,
+    );
+    if (hashRefreshToken !== decoded.id.toString())
+      return res.status(401).send({ message: "Invalid refresh Token!", success: false });
+    const accessToken = generateAccessToken(user);
+    const newRefreshToken = generateRefreshToken(user);
+    const newRefreshTokenHash = crypto
+      .createHash("sha256")
+      .update(newRefreshToken)
+      .digest("hex");
+    await redis.del(`refreshToken:${hashRefreshToken}`);
+    await redis.set(
+      `refreshToken:${newRefreshToken}`,
+      decoded.id,
+      "EX",
+      7 * 24 * 60 * 60,
+    );
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "strict",
+      })
+      .cookie("refreshToken", newRefreshToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "strict",
+      })
+      .send({
+        message: "Regenerated RefreshToken SuccessFully!",
+        success: true,
+      });
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).send({
+      message: "Failed to generate RefreshToken",
+      success: false,
+      error,
+    });
+  }
+};
+
+export const forgotPassword = async(req,res) => {
+  try {
+    const {email}  = req.body;
+    if(!email) return res.status(401).send({message:"Email is required!",success:false});
+    const user = await userModel.findOne({email});
+    if(!user) return res.status(404).send({message:"User Not Found!",success:false});
+    const otp = Math.floor(100000 + Math.random()*900000).toString();
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+    const token = generateToken(user);
+    await redis.set(`otp:${user._id}`,otp,"EX",otpExpiry);
+    sendOtpMail(otp,email,token);  
+    return res.status(200).send({message:"Otp Send SuccessFully",success:true});
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).send({
+      message: error,
+      success: false,
+    });
+  }
+}
+
+/*
+forgotPassword
+confirmOtp
+changePassword
 */
