@@ -227,9 +227,9 @@ export const forgotPassword = async(req,res) => {
     const otp = Math.floor(100000 + Math.random()*900000).toString();
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
     const token = generateToken(user);
-    await redis.set(`otp:${user._id}`,otp,"EX",otpExpiry);
+    await redis.set(`otp:${user._id}`,{userId:user._id,otp:otp},"EX",otpExpiry);
     sendOtpMail(otp,email,token);  
-    return res.status(200).send({message:"Otp Send SuccessFully",success:true});
+    return res.status(200).cookie("token",token).send({message:"Otp Send SuccessFully",success:true});
   } catch (error) {
     console.log(error.message);
     return res.status(500).send({
@@ -239,8 +239,19 @@ export const forgotPassword = async(req,res) => {
   }
 }
 
+export const confirmOtp = async(req,res) => {
+  try {
+    const {otp} = req.body;
+    if(!otp) return res.status(401).send({message:"Otp is required!",success:false});
+    const userId = req.user.id;
+    const user = await userModel.findById(userId);
+    if(!user) return res.status(404).send({message:"User not Found",success:false});
+    
+  } catch (error) {
+    
+  }
+}
 /*
-forgotPassword
 confirmOtp
 changePassword
 */

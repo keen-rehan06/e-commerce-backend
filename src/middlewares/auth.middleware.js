@@ -93,6 +93,20 @@ export const isLoggedIn = async (req, res, next) => {
   }
 };
 
+export const changingPasswordToken = async(req,res,next) => {
+  const token = req.cookies.token;
+   if(!token) return res.status(401).send({message:'Token is not found!',success:false});
+   try {
+    const decoded = jwt.verify(token,process.env.JWT_SECRET);
+    if(!decoded) return res.status(401).send({message:"Invalid or Expired Token",success:false});
+    req.user = decoded;
+    next()
+  } catch (error) {
+     console.log(error.message);
+    return res.status(500).send({message:"Internal Server Error",success:false,error});
+  }
+}
+
 export const authorize = (...roles) => {
   return (req,res,next) => {
     if(!roles.includes(req.user.role))return res.status(401).send({message:"Access Denied!",success:false});
