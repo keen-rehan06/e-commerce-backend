@@ -277,17 +277,47 @@ export const confirmOtp = async (req, res) => {
         .status(401)
         .send({ message: "OTP Must be 6 number.", success: false });
     await redis.del(`otp:${user._id}`);
-    return res
-      .status(200)
-      .clearCookie("token")
-      .send({ message: `OTP Verified!`, success: true });
+    return res.status(200).send({ message: `OTP Verified!`, success: true });
   } catch (error) {
     console.log(error.message);
     return res.status(401).send({ message: error, success: false });
   }
 };
 
-
-/*
-changePassword
-*/
+export const changePassword = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { passsword, confirmPassword } = req.body;
+    if (!passsword || !confirmPassword)
+      return res
+        .status(401)
+        .send({ message: "All fields are required!", success: false });
+    if (password.length < 6 || password.length > 12)
+      return res
+        .status(401)
+        .send({
+          message: "Password must be minimum 6 characters or maximum 12.",
+        });
+    if (password !== confirmPassword)
+      return res
+        .status(401)
+        .send({ message: "Password is not match", success: false });
+    const user = await userModel.findById(userId);
+    if (!user)
+      return res
+        .status(404)
+        .send({ message: "User Not Found!", success: false });
+    const hashPassword = await bcrypt.hash(passsword, 10);
+    user.password = password;
+    await user.save();
+    return res
+      .status(200)
+      .clearCookie("token")
+      .send({ message: "Password Reset SuccessFully!", data: newUser });
+  } catch (error) {
+    console.log(error.message);
+    return res
+      .status(500)
+      .send({ message: "Password Reseting Failed!", success: false, error });
+  }
+};
