@@ -5,7 +5,7 @@ import { connectDb } from "./src/config/db/db.js";
 
 configDotenv({path:".env"});
 
-;(()=>{
+;(async()=>{
     try {
         await connectDb();
     } catch (error) {
