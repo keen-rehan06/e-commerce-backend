@@ -1,4 +1,5 @@
 import { userModel } from "../models/user.model.js";
+import {roleModel} from "../models/role.model.js"
 import { verifyEmail } from "../config/verifyEmail.config.js";
 import {
   generateAccessToken,
@@ -12,7 +13,7 @@ import crypto from "crypto";
 export const createUser = async (req, res) => {
   try {
     const ip = req.ip;
-    const key = `registr:${ip}`;
+    const key = `register:${ip}`;
     const attempts = await redis.incr(key);
     if (attempts === 1) {
       await redis.expire(key, 300);
@@ -23,21 +24,25 @@ export const createUser = async (req, res) => {
       });
     const { name, username, email, password } = req.body;
     const hashPassword = await bcrypt.hash(password, 10);
+    const role = await roleModel.findOne({
+      name:"CUSTOMER"
+    })
     const createUser = await userModel.create({
       name,
       username,
       email,
       password: hashPassword,
+      role:role._id
     });
     const token = generateToken(user);
     verifyEmail(token, email);
     const newCreatedUser = await userModel
-      .findById(user.id)
+      .findById(createUser._id)
       .select("-password");
     return res
       .status(201)
       .cookie("token", token)
-      .send({ message: "User Created SuccessFully!", success: false });
+      .send({ message: "User Created SuccessFully!", success: false,data:newCreatedUser });
   } catch (error) {
     console.log(error.message);
     return res.status(500).send({ message: "User Register Failed!", error });
