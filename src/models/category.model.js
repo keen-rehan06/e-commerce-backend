@@ -1,14 +1,15 @@
 import mongoose from "mongoose";
 
-const categorySchema = new mongoose.Schema({
-    name:{
-        type:String,
-        required: [true, "Category name is required"],
+const categorySchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: [true, "Category name is required"],
       trim: true,
       minlength: 2,
       maxlength: 100,
     },
-     slug: {
+    slug: {
       type: String,
       required: [true, "Category slug is required"],
       trim: true,
@@ -31,30 +32,31 @@ const categorySchema = new mongoose.Schema({
         trim: true,
       },
     },
-    parentCategory:{
-        type:mongoose.Schema.Types.ObjectId,
-        ref:"category",
-        default:null,
-        index:true
+    parentCategory: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "category",
+      default: null,
+      index: true,
     },
-     isActive: {
+    isActive: {
       type: Boolean,
       default: true,
       index: true,
     },
-},
-{
-    timestamps:true
-});
+  },
+  {
+    timestamps: true,
+  },
+);
 
 categorySchema.index(
-    {
-     slug:1,
-     parentCategory:1,
-    },
-    {
-     unique:true
-    }
-)
+  {
+    slug: 1,
+    parentCategory: 1,
+  },
+  {
+    unique: true,
+  },
+);
 
-export const categoryModel = new mongoose.model("category",categorySchema)
+export const categoryModel = new mongoose.model("category", categorySchema);
