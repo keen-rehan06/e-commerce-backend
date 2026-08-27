@@ -65,12 +65,20 @@ export const getSingleCategory = async (req, res) => {
     const categoryId = req.params.id;
     const cacheKey = `categories:${categoryId}`;
     const cachedCategories = await redis.get(cacheKey);
-    if(cachedCategories) return res.status(200).json({category:JSON.parse(cachedCategories),source:"redis",success:true})
+    if (cachedCategories)
+      return res
+        .status(200)
+        .json({
+          category: JSON.parse(cachedCategories),
+          source: "redis",
+          success: true,
+        });
     const category = await categoryModel.findById(categoryId);
     if (!category)
-      return res 
+      return res
         .status(401)
         .send({ message: "No Category found!", success: false });
+    await redis.set(cacheKey, JSON.stringify(category), "EX", 600);
     return res.status(200).send({ data: category, success: true });
   } catch (error) {
     console.log(error.message);
