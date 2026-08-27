@@ -2,6 +2,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import { configDotenv } from "dotenv";
 import { connectDb } from "./src/config/db/db.js";
+import redis from "./src/config/redis/redis.js";
 
 configDotenv({path:".env"});
 

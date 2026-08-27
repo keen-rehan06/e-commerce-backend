@@ -6,8 +6,8 @@ import {
   generateRefreshToken,
   generateToken,
 } from "../config/tokens.config.js";
-import redis from "ioredis";
 import bcrypt from "bcrypt";
+import redis from "../config/redis/redis.js";
 import crypto from "crypto";
 
 export const createUser = async (req, res) => {
