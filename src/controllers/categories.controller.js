@@ -36,8 +36,40 @@ export const getAllCategories = async (req, res) => {
       return res
         .status(404)
         .send({ message: "Sorry! No Categories were found!", success: false });
+    return res.status(200).send({
+      message: "All Categories are here.",
+      allCategories,
+      success: true,
+    });
+  } catch (error) {
+    console.log(error.message);
     return res
-      .status(200)
-      .send({ message: "Categories.", allCategories, success: true });
-  } catch (error) {}
+      .status(500)
+      .send({ message: "Internal Server Error.", success: false, error });
+  }
 };
+
+export const getSingleCategory = async (req, res) => {
+  try {
+    const categoryId = req.params.id;
+    const category = await categoryModel.findById(categoryId);
+    if (!category)
+      return res
+        .status(401)
+        .send({ message: "No Category found!", success: false});
+        return res.status(200).send({data:category,success:true});
+  } catch (error) {
+    console.log(error.message);
+    return res
+      .status(500)
+      .send({ message: "Internal Server Error.", success: false, error });
+  }
+};
+
+export const updateCategory = async (req,res) => {
+  try {
+    
+  } catch (error) {
+    
+  }
+}
