@@ -11,14 +11,16 @@ export const createCategory = async (req, res) => {
     const isExistCategory = await categoryModel.findOne({
       $or: [{ name }, { slug }],
     });
-    if (isExistCategory)
+    if (isExistCategory) {
       return res
         .status(401)
         .send({ message: "Category is already exist!", success: false });
+    }
     const createCategory = await categoryModel.create({
       name,
       slug,
     });
+    await redis.del(`categories:all`);
     return res
       .status(200)
       .send({ message: "Category Created.", createCategory });
@@ -66,13 +68,11 @@ export const getSingleCategory = async (req, res) => {
     const cacheKey = `categories:${categoryId}`;
     const cachedCategories = await redis.get(cacheKey);
     if (cachedCategories)
-      return res
-        .status(200)
-        .json({
-          category: JSON.parse(cachedCategories),
-          source: "redis",
-          success: true,
-        });
+      return res.status(200).json({
+        category: JSON.parse(cachedCategories),
+        source: "redis",
+        success: true,
+      });
     const category = await categoryModel.findById(categoryId);
     if (!category)
       return res
@@ -103,6 +103,8 @@ export const updateCategory = async (req, res) => {
     } else if (name !== undefined) category.name = name;
     else category.slug = slug;
     await category.save();
+    await redis.del(`categories:${categoryId}`);
+    await redis.del(`categories:all`);
     return res
       .status(200)
       .send({ message: "Category Updated SuccessFully!", success: true });
@@ -123,6 +125,8 @@ export const deleteCategory = async (req, res) => {
         .status(404)
         .send({ message: "category not found!", success: false });
     await categoryModel.deleteOne(categoryId);
+    await redis.del(`categories:${categoryId}`);
+    await redis.del(`categories:all`);
     return res
       .status(200)
       .send({ message: "category deleted successfully!", success: true });
