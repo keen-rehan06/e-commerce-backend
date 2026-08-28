@@ -1,7 +1,7 @@
 import { productModel } from "../models/product.model.js";
 import { categoryModel } from "../models/category.model.js";
 import { brandModel } from "../models/brand.model.js";
-import redis from "../config/redis/redis.js" 
+import redis from "../config/redis/redis.js";
 
 export const createProduct = async (req, res) => {
   try {
@@ -47,7 +47,97 @@ export const createProduct = async (req, res) => {
 
 export const getAllProducts = async (req, res) => {
   try {
-    const {search,brand,category,page}
+    const {
+      search,
+      brand,
+      category,
+      page = 1,
+      limit = 10,
+      sort = "newest",
+    } = req.query;
+    const cacheKey = `products:${JSON.stringify({
+      search,
+      brand,
+      category,
+      page,
+      limit,
+      sort,
+    })}`;
+    const cachedProducts = await redis.get(cacheKey);
+    if (cachedProducts)
+      return res.status(200).send({
+        message: "Products fetched from cache",
+        success: true,
+        products: JSON.parse(cachedProducts),
+      });
+    // filter object
+    const filter = {};
+    //search by product name
+    if (search) {
+      filter.name = {
+        $regex: search,
+        $options: "i",
+      };
+    }
+    // Filter by brand
+    if (brand) filter.brand = brand;
+    // Filter by category
+    if (category) filter.category = category;
+
+    // Pagination
+    const pageNumber = Math.max(Number(page), 1);
+    const limitNumber = Math.min(Math.max(Number(limit), 1), 100);
+    const skip = (pageNumber - 1) * limitNumber;
+
+    // sorting
+    let sortOption = { createdAt: -1 };
+    if (sort === "oldest") {
+      sortOption = { createdAt: 1 };
+    }
+    if (sort === "name_asc") {
+      sortOption = { name: 1 };
+    }
+
+    if (sort === "name_desc") {
+      sortOption = { name: -1 };
+    }
+    // 6. Get products + total count
+    const [products, totalProducts] = await Promise.all([
+      productModel
+        .find(filter)
+        .populate("brand", "name")
+        .populate("category", "name")
+        .sort(sortOption)
+        .skip(skip)
+        .limit(limitNumber),
+      productModel.countDocuments(filter),
+    ]);
+    const totalPages = Math.ceil(totalProducts / limitNumber);
+    const result = {
+      products,
+      pagination: {
+        currentPage: pageNumber,
+        limit: limitNumber,
+        totalProducts,
+        totalPages,
+        nextPage: pageNumber < totalPages,
+        previousPage: pageNumber > 1,
+      },
+    };
+     // 8. Save in Redis
+    await redis.set(
+      cacheKey,
+      JSON.stringify(result),
+      "EX",
+      300
+    );
+
+    // 9. Response
+    return res.status(200).json({
+      success: true,
+      message: "Products fetched successfully",
+      result,
+    });
   } catch (error) {
     console.error("Get All Products Error:", error);
 
