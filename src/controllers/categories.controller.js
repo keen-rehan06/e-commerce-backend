@@ -61,7 +61,7 @@ export const getAllCategories = async (req, res) => {
       .send({ message: "Internal Server Error.", success: false, error });
   }
 };
-
+ 
 export const getSingleCategory = async (req, res) => {
   try {
     const categoryId = req.params.id;
