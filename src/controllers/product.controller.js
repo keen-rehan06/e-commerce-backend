@@ -196,19 +196,52 @@ export const updateSingleProduct = async (req, res) => {
         success: false,
         message: "Invalid product ID",
       });
-      const allowedFields = [
-        "name",
-        "slug",
-        "description",
-        "shortDescription",
-        "brand",
-        "category",
-        "images",
-        "tags",
-        "status",
-        "isFeatured",
-      ];
     }
-    const product = await productModel.findById(productId);
-  } catch (error) {}
+    const cacheKey = `product:${productId}`;
+    await redis.del(cacheKey);
+    const allowedFields = [
+      "name",
+      "slug",
+      "description",
+      "shortDescription",
+      "brand",
+      "category",
+      "images",
+      "tags",
+      "status",
+      "isFeatured",
+    ];
+    const update = {};
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) {
+        update[field] = req.body[field];
+      }
+    }
+    if (Object.keys(update).length === 0)
+      return res
+        .status(400)
+        .json({ success: false, message: "No fields provided for update" });
+    const updateProduct = await productModel.findByIdAndUpdate(
+      productId,
+      update,
+      { new: true },
+    );
+    if (!updateProduct)
+      return res
+        .status(404)
+        .send({ message: "Product not found!", success: false });
+    return res.status(200).json({
+      success: true,
+      message: "Product updated successfully",
+      product: updateProduct,
+    });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({
+        success: false,
+        message: "Internal server error",
+        error: error.message,
+      });
+  }
 };
