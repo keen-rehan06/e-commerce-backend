@@ -25,10 +25,16 @@ export const createProduct = async (req, res) => {
       return res
         .status(404)
         .send({ message: "Category not Found!", success: false });
+    const images = req.files.map((file) => ({
+      url: req.file.path,
+      publicId: req.file.filename,
+      alterText: `${name} Product Image.`,
+    }));
     const product = await productModel.create({
       name,
       slug,
       description,
+      images,
       brand: existingBrand._id,
       category: existingCategory._id,
     });
@@ -182,17 +188,27 @@ export const getSingleProduct = async (req, res) => {
   }
 };
 
-export const updateSingleProduct = async (req,res) => {
+export const updateSingleProduct = async (req, res) => {
   try {
-   const { productId } = req.params;
+    const { productId } = req.params;
     if (!mongoose.isValidObjectId(productId)) {
       return res.status(400).json({
         success: false,
         message: "Invalid product ID",
       });
+      const allowedFields = [
+        "name",
+        "slug",
+        "description",
+        "shortDescription",
+        "brand",
+        "category",
+        "images",
+        "tags",
+        "status",
+        "isFeatured",
+      ];
     }
-   const product = await productModel.findById(productId);
-  } catch (error) {
-    
-  }
-} 
+    const product = await productModel.findById(productId);
+  } catch (error) {}
+};
