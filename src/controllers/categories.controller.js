@@ -1,5 +1,6 @@
 import { categoryModel } from "../models/category.model.js";
 import redis from "../config/redis/redis.js";
+import mongoose from "mongoose";
 
 export const createCategory = async (req, res) => {
   try {
@@ -65,6 +66,12 @@ export const getAllCategories = async (req, res) => {
 export const getSingleCategory = async (req, res) => {
   try {
     const categoryId = req.params.id;
+    if (!mongoose.isValidObjectId(categoryId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid product ID",
+      });
+    }
     const cacheKey = `categories:${categoryId}`;
     const cachedCategories = await redis.get(cacheKey);
     if (cachedCategories)
@@ -92,6 +99,12 @@ export const updateCategory = async (req, res) => {
   try {
     const { name, slug } = req.body;
     const categoryId = req.params.id;
+    if (!mongoose.isValidObjectId(categoryId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid product ID",
+      });
+    }
     const category = await categoryModel.findById(categoryId);
     if (!category)
       return res
@@ -119,6 +132,12 @@ export const updateCategory = async (req, res) => {
 export const deleteCategory = async (req, res) => {
   try {
     const categoryId = req.params.id;
+     if (!mongoose.isValidObjectId(categoryId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid product ID",
+      });
+    }
     const category = await categoryModel.findById(categoryId);
     if (!category)
       return res

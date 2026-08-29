@@ -2,6 +2,7 @@ import { productModel } from "../models/product.model.js";
 import { categoryModel } from "../models/category.model.js";
 import { brandModel } from "../models/brand.model.js";
 import redis from "../config/redis/redis.js";
+import mongoose from "mongoose";
 
 export const createProduct = async (req, res) => {
   try {
@@ -124,13 +125,8 @@ export const getAllProducts = async (req, res) => {
         previousPage: pageNumber > 1,
       },
     };
-     // 8. Save in Redis
-    await redis.set(
-      cacheKey,
-      JSON.stringify(result),
-      "EX",
-      300
-    );
+    // 8. Save in Redis
+    await redis.set(cacheKey, JSON.stringify(result), "EX", 300);
 
     // 9. Response
     return res.status(200).json({
@@ -147,3 +143,56 @@ export const getAllProducts = async (req, res) => {
     });
   }
 };
+
+export const getSingleProduct = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    if (!mongoose.isValidObjectId(productId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid product ID",
+      });
+    }
+    const cacheKey = `product:${productId}`;
+    const cachedProduct = await redis.get(cacheKey);
+    if (cachedProduct)
+      return res.status(200).send({
+        message: "Product fetch from redis cache.",
+        cachedProduct,
+        success: true,
+      });
+    const product = await productModel
+      .findById(productId)
+      .populate("brand", "name")
+      .populate("category", "name");
+    if (!product)
+      return res
+        .status(404)
+        .send({ message: "Product not found!", success: false });
+    await redis.set(cacheKey, JSON.stringify(product), "EX", 300);
+    return res
+      .status(200)
+      .send({ message: "Product fetch from db.", product, success: true });
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const updateSingleProduct = async (req,res) => {
+  try {
+   const { productId } = req.params;
+    if (!mongoose.isValidObjectId(productId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid product ID",
+      });
+    }
+   const product = await productModel.findById(productId);
+  } catch (error) {
+    
+  }
+} 
