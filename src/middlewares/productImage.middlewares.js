@@ -7,7 +7,6 @@ const storage = new CloudinaryStorage({
     params:{
         folder:"e-commerce/products",
         allowed_formats: ["jpg", "jpeg", "png", "webp"],
-        public_id: () => `product-${uuidv4()}`,
     }
 });
 

@@ -3,6 +3,8 @@ import { categoryModel } from "../models/category.model.js";
 import { brandModel } from "../models/brand.model.js";
 import redis from "../config/redis/redis.js";
 import mongoose from "mongoose";
+import { v4 as uuid } from "uuid";
+import cloudinary from "../services/cloudinary/cloudinary.js";
 
 export const createProduct = async (req, res) => {
   try {
@@ -27,7 +29,7 @@ export const createProduct = async (req, res) => {
         .send({ message: "Category not Found!", success: false });
     const images = req.files.map((file) => ({
       url: req.file.path,
-      publicId: req.file.filename,
+      publicId: uuid(),
       alterText: `${name} Product Image.`,
     }));
     const product = await productModel.create({
@@ -197,6 +199,11 @@ export const updateSingleProduct = async (req, res) => {
         message: "Invalid product ID",
       });
     }
+    const product = await productModel.findById(productId);
+    if (!product)
+      return res
+        .status(404)
+        .send({ message: "Product not found!", success: false });
     const allowedFields = [
       "name",
       "slug",
@@ -204,7 +211,6 @@ export const updateSingleProduct = async (req, res) => {
       "shortDescription",
       "brand",
       "category",
-      "images",
       "tags",
       "status",
       "isFeatured",
@@ -219,18 +225,25 @@ export const updateSingleProduct = async (req, res) => {
       return res
         .status(400)
         .json({ success: false, message: "No fields provided for update" });
-        
-    const cacheKey = `product:${productId}`;
+
+    if (req.file) {
+      const oldPublicId = product.images?.publicId;
+      if (oldPublicId) {
+        await cloudinary.uploader.destroy(oldPublicId);
+      }
+      product.images = {
+        url: req.file.path,
+        publicId: uuid(),
+      };
+    }
+    await product.save();
     await redis.del(cacheKey);
+    
     const updateProduct = await productModel.findByIdAndUpdate(
       productId,
       update,
       { new: true },
     );
-    if (!updateProduct)
-      return res
-        .status(404)
-        .send({ message: "Product not found!", success: false });
     return res.status(200).json({
       success: true,
       message: "Product updated successfully",
