@@ -197,8 +197,6 @@ export const updateSingleProduct = async (req, res) => {
         message: "Invalid product ID",
       });
     }
-    const cacheKey = `product:${productId}`;
-    await redis.del(cacheKey);
     const allowedFields = [
       "name",
       "slug",
@@ -221,6 +219,9 @@ export const updateSingleProduct = async (req, res) => {
       return res
         .status(400)
         .json({ success: false, message: "No fields provided for update" });
+        
+    const cacheKey = `product:${productId}`;
+    await redis.del(cacheKey);
     const updateProduct = await productModel.findByIdAndUpdate(
       productId,
       update,
@@ -236,12 +237,10 @@ export const updateSingleProduct = async (req, res) => {
       product: updateProduct,
     });
   } catch (error) {
-    return res
-      .status(500)
-      .json({
-        success: false,
-        message: "Internal server error",
-        error: error.message,
-      });
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
   }
 };

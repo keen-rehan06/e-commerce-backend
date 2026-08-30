@@ -6,7 +6,8 @@ const storage = new CloudinaryStorage({
     cloudinary,
     params:{
         folder:"e-commerce/products",
-        allowed_formats: ["jpg", "jpeg", "png", "webp"]
+        allowed_formats: ["jpg", "jpeg", "png", "webp"],
+        public_id: () => `product-${uuidv4()}`,
     }
 });
 
@@ -15,4 +16,4 @@ export const productsImageupload = multer({
     limits:{
         fileSize: 2 * 1024 * 1024,
     }
-}) 
+}); 
