@@ -237,19 +237,45 @@ export const updateSingleProduct = async (req, res) => {
       };
     }
     await product.save();
+    const cacheKey = `product:${productId}`;
     await redis.del(cacheKey);
-    
+
     const updateProduct = await productModel.findByIdAndUpdate(
       productId,
       update,
       { new: true },
     );
+    await redis.set(cacheKey, JSON.stringify(updateProduct), "EX", 300);
     return res.status(200).json({
       success: true,
       message: "Product updated successfully",
       product: updateProduct,
     });
   } catch (error) {
+    console.log(error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+export const deleteSingleProduct = async (req, res) => {
+  try {
+    const productId = req.params.id;
+    const product = await productModel.findByIdAndDelete(productId);
+    if (!product)
+      return res
+        .status(404)
+        .send({ message: "Product not found!", success: false });
+    const cacheKey = `product:${productId}`;
+    await redis.del(cacheKey);
+    return res
+      .status(200)
+      .send({ message: "Product Deleted SuccessFully!", success: true });
+  } catch (error) {
+    console.log(error.message);
     return res.status(500).json({
       success: false,
       message: "Internal server error",

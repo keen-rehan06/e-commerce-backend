@@ -1,3 +1,4 @@
+import redis from "../config/redis/redis.js";
 import { userModel } from "../models/user.model.js";
 import {roleModel} from "../models/role.model.js"
 import { verifyEmail } from "../config/verifyEmail.config.js";
@@ -6,9 +7,11 @@ import {
   generateRefreshToken,
   generateToken,
 } from "../config/tokens.config.js";
+import {v2 as uuid} from "uuid";
 import bcrypt from "bcrypt";
-import redis from "../config/redis/redis.js";
 import crypto from "crypto";
+
+import cloudinary from "../services/cloudinary/cloudinary.js";
 
 export const createUser = async (req, res) => {
   try {
@@ -327,4 +330,56 @@ export const changePassword = async (req, res) => {
   }
 };
 
-export const 
+export const getProfile = async (req,res) => {
+  try {
+    const userId = req.user.id;
+    const cacheKey = `user-profile:${userId}`;
+    const cachedData = await redis.get(cacheKey);
+    if(cachedData) return res.status(200).send({message:"User fetched from redis.",success:true,data:JSON.parse(cachedData)});
+    const user = await userModel.findById(userId).select("-password")
+    if(!user) return res.status(404).send({message:"User Not Found!",success:false});
+    await redis.set(cacheKey,JSON.stringify(user),"EX",300);
+    return res.status(200).send({message:"User Profile.",success:true,data:user});
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).send({message:"Internal Server Error",success:false,error})
+  }
+}
+
+export const updateProfile = async (req,res) => {
+  try {
+    const {name,username,mobile,profileImage} = req.body;
+    const userId = req.user.id;
+    const user = await userModel.findById(userId);
+    if(!user) return res.status(404).send({message:"User not found!",success:false});
+    const cacheKey = `user-profile:${userId}`;
+    const cachedData = await redis.del(cacheKey);
+    if(name !== undefined) user.name = name;
+    if(username !== undefined) {
+      const isAvalaible = await userModel.findOne({username});
+      if(isAvalaible) return res.status(401).send({message:"Username is not available!",success:false});
+      user.username = username;
+    }
+    if(mobile !== undefined) user.mobile = mobile;
+    if(profileImage !== undefined){
+      if(user.profileImage?.publicId){
+        await cloudinary.uploader.destroy(user.profileImage.publicId);
+      }
+    }
+    user.profileImage = {
+      url: req.file.path,
+      public_id:uuid()
+    };
+    await user.save(); 
+    const updatedUser = await userModel.findById(userId).select("-password");
+    await redis.set(cacheKey,JSON.stringify(updatedUser),"EX",600);
+    res.status(200).json({ success: true, message: "Profile updated successfully", user, });
+  } catch (error) {
+     console.log(error.message)
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+}
