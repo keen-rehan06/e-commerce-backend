@@ -93,23 +93,55 @@ export const getAllBrand = async (req, res) => {
         totalBrands,
         currentPage: pageNumber,
         totalPages: Math.ceil(totalBrands / limitNumber),
-        limit: limitNumber,   
+        limit: limitNumber,
       },
     };
 
-    await redis.set(cacheKey,JSON.stringify(result),"EX",300);
-    return res.status(200).send({success:true,source:"database",data:result})
+    await redis.set(cacheKey, JSON.stringify(result), "EX", 300);
+    return res
+      .status(200)
+      .send({ success: true, source: "database", data: result });
   } catch (error) {
     console.log(error.message);
-    return res.status(500).send({message:"Server Error.",success:true,error});
+    return res
+      .status(500)
+      .send({ message: "Server Error.", success: true, error });
   }
 };
 
-export const getSingleBrand = async (req,res) => {
+export const getSingleBrand = async (req, res) => {
   try {
     const brandId = req.params.id;
-    
+    const cacheKey = `brand:${brandId}`;
+    const cacheData = await redis.get(cacheKey);
+    if (cacheData)
+      return res
+        .status(200)
+        .send({
+          message: "Data fetched",
+          source: "redis",
+          success: true,
+          data: JSON.parse(cacheData),
+        });
+    const brand = await brandModel.findById(brandId);
+    if (!brand)
+      return res
+        .status(404)
+        .send({ message: "Brand not found!", success: false });
+    await redis.set(cacheKey, JSON.stringify(brand), "EX", 300);
+    return res
+      .status(200)
+      .send({
+        message: "Data fetched.",
+        success: true,
+        source: "database",
+        data: brand,
+      });
   } catch (error) {
-    
+    console.log(error.message);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
-}
+};
