@@ -145,3 +145,38 @@ export const getSingleBrand = async (req, res) => {
     });
   }
 };
+
+export const updateSingleBrand = async (req,res) => {
+  try {
+    const brandId = req.params.id;
+    const {name,slug,description} = req.body;
+    const brand =  await brandModel.findById(brandId);
+    if(!brand) return res.status(404).send({message:"Brand not found!",success:false});
+    const checkBrand = await brandModel.findOne({$or:[{name},{slug}]});
+    if(checkBrand) return res.status(409).send({message:"Brand already Exist! using name and slug!",success:false});
+    brand.name = name ?? brand.name;
+    brand.slug = slug ?? brand.slug;
+    brand.description = description ?? brand.description;
+    let brandLogo;
+    if(req.file){
+     brandLogo = {
+      url:req.file.path,
+      publicId:uuid()
+     }
+    }
+    brand.logo = brandLogo ?? brand.logo;
+    await brand.save();
+    await redis.del(`brand:${brandId}`);
+    return res.status(200).json({
+      success: true,
+      message: "Brand updated successfully",
+      brand,
+    });
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
