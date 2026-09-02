@@ -1,11 +1,11 @@
 import mongoose from "mongoose";
-import { productModel } from "./product.model";
+import { productModel } from "./product.model.js";
 
 const variantSchema = new mongoose.Schema(
   {
     product: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Product",
+      ref: "product",
       required: true,
       index: true,
     },
@@ -45,11 +45,13 @@ const variantSchema = new mongoose.Schema(
           type: String,
           required: true,
           trim: true,
+          default:null
         },
 
         publicId: {
           type: String,
           trim: true,
+          default:null
         },
 
         altText: {
