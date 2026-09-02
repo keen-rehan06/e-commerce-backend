@@ -157,12 +157,12 @@ export const updateSingleBrand = async (req,res) => {
     brand.name = name ?? brand.name;
     brand.slug = slug ?? brand.slug;
     brand.description = description ?? brand.description;
-    let brandLogo;
     if(req.file){
-     brandLogo = {
+        await cloudinary.uploader.destroy(brand.logo.publicId); 
+    }
+     let brandLogo = {
       url:req.file.path,
       publicId:uuid()
-     }
     }
     brand.logo = brandLogo ?? brand.logo;
     await brand.save();
@@ -175,6 +175,22 @@ export const updateSingleBrand = async (req,res) => {
   } catch (error) {
     console.log(error.message);
     return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+export const deleteSingleBrand = async (req,res) => {
+  try {
+    const brandId = req.params.id; 
+    const brand = await brandModel.findByIdAndDelete(brandId);
+    if(!brand) return res.status(404).send({message:"brand not found!",success:false});
+    await redis.del(`brand:${brandId}`);
+    return res.status(200).send({message:"Brand deleted successFully!",success:true});
+  } catch (error) {
+    console.log(error.message);
+     return res.status(500).json({
       success: false,
       message: error.message,
     });
