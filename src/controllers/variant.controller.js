@@ -1,8 +1,8 @@
 import { productModel } from "../models/product.model.js";
 import { variantModel } from "../models/variant.model.js";
-import { v2 as uuid } from "uuid";
 import redis from "../config/redis/redis.js";
 import cloudinary from "../services/cloudinary/cloudinary.js";
+import { v2 as uuid } from "uuid";
 
 export const createVariant = async (req, res) => {
   try {
