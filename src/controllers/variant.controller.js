@@ -2,6 +2,7 @@ import { productModel } from "../models/product.model.js";
 import { variantModel } from "../models/variant.model.js";
 import { v2 as uuid } from "uuid";
 import redis from "../config/redis/redis.js";
+import cloudinary from "../services/cloudinary/cloudinary.js";
 
 export const createVariant = async (req, res) => {
   try {
@@ -155,6 +156,53 @@ export const updateSingleVarinat = async (req, res) => {
       isDefault,
       status,
     } = req.body;
-    const variant = await 
-  } catch (error) {}
+    const variant = await variantModel.findById(variantId);
+    if (!variant)
+      return res
+        .status(404)
+        .send({ message: "Varinat not found!", success: false });
+    if (sku !== undefined) variant.sku = sku;
+    if (price !== undefined) variant.price = price;
+    if (compareAtPrice !== undefined) variant.compareAtPrice = compareAtPrice;
+    if (costPrice !== undefined) variant.costPrice = costPrice;
+    if (currency !== undefined) variant.currency = currency;
+    if (isDefault !== undefined) variant.isDefault = isDefault;
+    if (status !== undefined) variant.status = status;
+    if (req.file) {
+      const oldPublicId = product.images?.publicId;
+      if (oldPublicId) {
+        await cloudinary.uploader.destroy(oldPublicId);
+      }
+      variant.images = {
+        url: req.file.path,
+        publicId: uuid(),
+      };
+    }
+
+    const updatedVariant = await variant.save();
+
+    // Delete old Redis cache
+    await redis.del(`variant:${id}`);
+
+    // Store updated variant in Redis
+    await redis.set(
+      `variant:${id}`,
+      JSON.stringify(updatedVariant),
+      "EX",
+      3600
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Variant updated successfully",
+      variant: updatedVariant,
+    });
+  } catch (error) {
+      console.error("Update Variant Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
 };
