@@ -12,7 +12,7 @@ const inventorySchema = new mongoose.Schema({
       type: Number,
       required: true,
       default: 0,
-      min: [0, "Quantity cannot be negative"],
+      min: [0, "Quantity can not be negative"],
     },
     reservedQuantity:{
       type:Number,
