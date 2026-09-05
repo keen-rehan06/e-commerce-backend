@@ -206,3 +206,17 @@ export const updateSingleVarinat = async (req, res) => {
     });
   }
 };
+
+export const deleteVariant = async (req,res) => {
+  try {
+    const variantId = req.params.id;
+    const cacheKey = `variant:${variantId}`; 
+    const variant = await variantModel.findByIdAndDelete(variantId);
+    if(!variant) return res.status(404).send({message:"Varinat not found!",success:false});
+    await redis.del(cacheKey);
+    return res.status(200).send({message:"Variant Deleted Successfully",success:false});
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).send({message:"Internal Server Error!",success:false});
+  }
+}
