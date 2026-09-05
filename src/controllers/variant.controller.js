@@ -107,3 +107,54 @@ export const getAllVariants = async (req, res) => {
     });
   }
 };
+
+export const getSingleVariant = async (req, res) => {
+  try {
+    const variantId = req.params.id;
+    const cacheKey = `variant:${variantId}`;
+    const cachedData = await redis.get(cacheKey);
+    if (cacheKey)
+      return res.status(200).send({
+        message: "variant fetched from cahced.",
+        success: true,
+        data: JSON.parse(cachedData),
+      });
+    const variant = await variantModel.findById(variantId).populate("product");
+    if (!variant)
+      return res
+        .status(404)
+        .send({ message: "variant not found!", success: false });
+    //  Redis me store karo
+    await redis.set(cacheKey, JSON.stringify(variant), "EX", 300);
+
+    //  Response
+    return res.status(200).json({
+      message: "Variant fetched successfully",
+      success: true,
+      variant,
+    });
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).json({
+      message: error.message,
+      success: false,
+    });
+  }
+};
+
+export const updateSingleVarinat = async (req, res) => {
+  try {
+    const variantId = req.params.id;
+    const {
+      sku,
+      price,
+      compareAtPrice,
+      costPrice,
+      currency,
+      images,
+      isDefault,
+      status,
+    } = req.body;
+    const variant = await 
+  } catch (error) {}
+};
