@@ -1,25 +1,25 @@
 import { variantModel } from "../models/variant.model.js";
 import { inventoryModel } from "../models/inventory.model.js";
+import redis from "../config/redis/redis.js";
 
 export const createInventory = async (req, res) => {
   try {
     const variant = req.params.id;
-    const { 
-        quantity,
-        reservedQuantity, 
-        lowStockThreshold, 
-        allowBackorder 
-    } = req.body;
+    const { quantity, reservedQuantity, lowStockThreshold, allowBackorder } =
+      req.body;
     const existingVariant = await variantModel.findById(variant);
-    if(!existingVariant) return res.status(404).send({message:"Variant not found!",success:false});
-    const existingInventory = await inventoryModel.findOne({variant});
+    if (!existingVariant)
+      return res
+        .status(404)
+        .send({ message: "Variant not found!", success: false });
+    const existingInventory = await inventoryModel.findOne({ variant });
     if (existingInventory) {
       return res.status(409).json({
         success: false,
         message: "Inventory already exists for this variant",
       });
     }
-     const inventory = await inventoryModel.create({
+    const inventory = await inventoryModel.create({
       variant,
       quantity,
       reservedQuantity,
@@ -40,4 +40,24 @@ export const createInventory = async (req, res) => {
       error: error.message,
     });
   }
+};
+
+export const getAllInventory = async (req, res) => {
+  try {
+    const {
+      variant,
+      allowBackorder,
+      lowstock,
+      page = 1,
+      limit = 10,
+      sort = "-createdAt",
+    } = req.query;
+    const filter = {};
+    if (variant) {
+      filter.variant = variant;
+    }
+    if (allowBackorder !== undefined) {
+      filter.allowBackorder = allowBackorder === "true";
+    }
+  } catch (error) {}
 };
