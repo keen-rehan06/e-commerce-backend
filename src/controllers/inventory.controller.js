@@ -59,38 +59,68 @@ export const getAllInventory = async (req, res) => {
     if (allowBackorder !== undefined) {
       filter.allowBackorder = allowBackorder === "true";
     }
-    if(lowstock === "true") {
-       filter.$expr = {
-        $lte:[
+    if (lowstock === "true") {
+      filter.$expr = {
+        $lte: [
           {
-            $subtract: ["$quantity","$reservedQuantity"]
+            $subtract: ["$quantity", "$reservedQuantity"]
           },
           "$lowStockThreshold"
         ]
-       };
+      };
     }
     const pageNumber = Number(page);
     const limitNumber = Number(limit);
     const skip = (pageNumber - 1) * limitNumber;
-        const cacheKey = `inventory:${variant || "all"}:${allowBackorder || "all"}:${lowstock || "all"}:${pageNumber}:${limitNumber}:${sort}`;
+    const cacheKey = `inventory:${variant || "all"}:${allowBackorder || "all"}:${lowstock || "all"}:${pageNumber}:${limitNumber}:${sort}`;
     const cachedInventory = await redis.get(cacheKey);
-    if(cachedInventory) {
+    if (cachedInventory) {
       return res.status(200).send({
-        message:"Inventory fetched from cache.",
-        success:true,
+        message: "Inventory fetched from cache.",
+        success: true,
         ...JSON.parse(cachedInventory)
       });
     }
-    const [inventory,total] = await Promise.all([
+    const [inventory, total] = await Promise.all([
       inventoryModel
-      .find(filter)
-      .populate("variant")
-      .sort(sort)
-      .skip(skip)
-      .limit(limitNumber),
+        .find(filter)
+        .populate("variant")
+        .sort(sort)
+        .skip(skip)
+        .limit(limitNumber),
 
       inventoryModel.countDocuments(filter),
-    ]) 
-  } catch (error) {
+    ]);
+    if (inventory.length === 0) {
+      return res.status(404).send({
+        message: "No Inventory found.",
+        success: false
+      })
+    }
 
+    const response = {
+      inventory,
+      pagination: {
+        total,
+        page: pageNumber,
+        limit: limitNumber,
+        totalPages: Math.ceil(total / limitNumber);
+      }
+    }
+    // Save in Redis for 5 minutes
+    await redis.set(cacheKey, JSON.stringify(response), "EX", 300);
+
+    return res.status(200).json({
+      success: true,
+      message: "Inventory fetched successfully",
+      ...response,
+    });
+  } catch (error) {
+    console.log(error.message)
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch inventory",
+      error: error.message,
+    });
   }
+}
