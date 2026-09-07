@@ -59,5 +59,38 @@ export const getAllInventory = async (req, res) => {
     if (allowBackorder !== undefined) {
       filter.allowBackorder = allowBackorder === "true";
     }
-  } catch (error) {}
-};
+    if(lowstock === "true") {
+       filter.$expr = {
+        $lte:[
+          {
+            $subtract: ["$quantity","$reservedQuantity"]
+          },
+          "$lowStockThreshold"
+        ]
+       };
+    }
+    const pageNumber = Number(page);
+    const limitNumber = Number(limit);
+    const skip = (pageNumber - 1) * limitNumber;
+        const cacheKey = `inventory:${variant || "all"}:${allowBackorder || "all"}:${lowstock || "all"}:${pageNumber}:${limitNumber}:${sort}`;
+    const cachedInventory = await redis.get(cacheKey);
+    if(cachedInventory) {
+      return res.status(200).send({
+        message:"Inventory fetched from cache.",
+        success:true,
+        ...JSON.parse(cachedInventory)
+      });
+    }
+    const [inventory,total] = await Promise.all([
+      inventoryModel
+      .find(filter)
+      .populate("variant")
+      .sort(sort)
+      .skip(skip)
+      .limit(limitNumber),
+
+      inventoryModel.countDocuments(filter),
+    ]) 
+  } catch (error) {
+
+  }
