@@ -124,3 +124,94 @@ export const getAllInventory = async (req, res) => {
     });
   }
 }
+
+export const getSingleInventory = async (req, res) => {
+  try {
+    const inventoryId = req.params.id;
+    const cacheKey = `inventory:${inventoryId}`;
+    const cachedData = await redis.get(cacheKey);
+    if (cachedData) {
+      return res.status(200).send({
+        message: "Inventory fetched from cache",
+        inventroy: JSON.parse(cachedData)
+        , success: true
+      });
+    }
+    const inventory = await inventoryModel.findById(inventoryId).populate("variant")
+
+    if (!variant) return res.status(404).send(404).send({ message: "inventroy not found", success: false });
+    // Store in Redis
+    await redis.set(
+      cacheKey,
+      JSON.stringify(inventory),
+      "EX",
+      300
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Inventory fetched successfully",
+      inventory,
+    });
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch inventory",
+      error,
+    });
+  }
+}
+
+export const updateInventory = async (req, res) => {
+  try {
+    const inventoryId = req.params.id;
+    const cacheKey = `inventory:${inventoryId}`;
+    const inventory = await inventoryModel.findById(inventoryId);
+    if (!inventory) return res.status(404).send({ message: 'Inventory not found!', success: false });
+    await redis.del(cacheKey);
+    const {
+      quantity,
+      reservedQuantity,
+      lowStockThreshold,
+      allowBackorder
+    } = req.body;
+    if (quantity !== undefined) inventory.quantity = quantity;
+    if (reservedQuantity !== undefined) inventory.reservedQuantity = reservedQuantity;
+    if (lowStockThreshold !== undefined) inventory.lowStockThreshold = lowStockThreshold;
+    if (allowBackorder !== undefined) inventory.allowBackorder = allowBackorder;
+    await inventory.save();
+
+    await redis.set(cacheKey, JSON.stringify(inventory), "EX", 300);
+    return res.status(200).json({
+      success: true,
+      message: "Inventory updated successfully",
+      inventory,
+    });
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update inventory",
+      error,
+    });
+  }
+}
+
+export const deleteInventory = async (req,res) => {
+  try {
+    const inventoryId = req.params.id;
+    const cacheKey = `inventory:${inventoryId}`;
+    const inventory = await inventoryModel.findByIdAndDelete(inventoryId);  
+    if(!inventory) return res.status(404).send({message:"Inventory not found!",success:false});
+    await redis.del(cacheKey);
+    return res.status(200).send({message:"Inventory Deleted.",success:true})
+  } catch (error) {
+      console.log(error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update inventory",
+      error,
+    });
+  }
+}
