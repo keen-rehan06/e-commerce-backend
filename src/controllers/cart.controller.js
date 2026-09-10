@@ -201,8 +201,48 @@ export const removeCartItem = async (req,res) => {
    const itemExists = cart.items.some(
     (item) => item.variant.toString() === variantId
    )
-    
+    if(!itemExists) return res.status(404).send({message:"Item not found in cart!",success:false});
+
+    cart.items = cart.items.filter((item) => item.variant.toString() !== variantId);
+     await cart.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Item removed from cart",
+      cart,
+    });
   } catch (error) {
-    
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+export const clearCart = async (req,res) => {
+  try {
+    const userId = req.user.id;
+    const cacheKey = `cart:${userId}`;
+    const cart = await cartModel.findOne({
+      user:userId
+    });
+    if(!cart) return res.status(404).send({
+      message:"cart not found!",
+      successs:false
+    });
+    cart.items = [];
+    await cart.save();
+    await redis.del(cacheKey);
+    return res.status(200).json({
+      success: true,
+      message: "Cart cleared successfully",
+      cart,
+    });
+  } catch (error) {
+    console.log(error.message);
+      return res.status(500).json({
+      message: "cart cleared failed!",
+      success: false,
+    });
   }
 }
