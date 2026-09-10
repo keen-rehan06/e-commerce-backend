@@ -110,3 +110,19 @@ export const removeFromWishList = async (req, res) => {
     });
   }
 };
+
+export const clearWishlist = async (req,res) => {
+  try {
+    const cacheKey = `wishlist:${userId}`;
+    const userId = req.user.id;
+    const wishlist = await wishlistModel.findOne({user:userId});
+    if(!wishlist) return res.status(404).send({message:"wishlist not found!",success:false});
+    wishlist.products = [];
+    await wishlist.save()
+    await redis.del(cacheKey);
+    return res.status(200).send({message:"wishlist cleared successfully!",success:true});
+  } catch (error) {
+    console.log(error.message);
+  return res.status(500).send({message:"wishlist failed to cleared!",success:false,error});
+  }
+}

@@ -68,6 +68,10 @@ const userSchema = new mongoose.Schema(
         ref: "order",
       },
     ],
+    adresses:[{
+        type: mongoose.Schema.Types.ObjectId,
+        ref:'address'
+    }],
     cartProduct: [
       {
         type: mongoose.Schema.Types.ObjectId,
