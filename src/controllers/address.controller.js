@@ -1,4 +1,5 @@
 import { addressModel } from "../models/address.model.js";
+import redis from "../config/redis/redis.js";
 
 export const addAddress = async (req, res) => {
   try {
@@ -61,3 +62,22 @@ export const addAddress = async (req, res) => {
     });
   }
 };
+
+export const getMyAddress = async (req,res) => {
+  try {
+    const userId = req.user.id;
+    const cacheKey = `address:${userId}`;
+    const cachedData = await redis.get(cacheKey);
+    if(cachedData) return res.status(200).send({message:"address fetched from redis.",...JSON.parse(cacheKey),success:true});
+    const addresses = await addressModel.find({user:userId}).sort({ isDefault: -1, createdAt: -1});
+    await redis.set(cacheKey,...JSON.stringify,"EX",300);
+    return res.status(200).send({message:"address fetched from db",success:true,addresses});
+  } catch (error) {
+    console.log(error.message)
+    return res.status(500).json({
+      success: false,
+      message: "Failed to get addresses",
+      error,
+    });
+  }
+}
