@@ -126,3 +126,96 @@ export const getSingleAddress = async (req, res) => {
     });
   }
 };
+
+export const updateAddress = async (req, res) => {
+  try {
+    const addressId = req.params.id;
+        const cacheKey = `getsingleaddress:${addressId}`;
+    const address = await addressModel.findOne({
+      _id: addressId,
+      user: req.user.id,
+    });
+    if (!address)
+      return res
+        .status(404)
+        .send({ message: "Address not found!", success: false });
+    await redis.del(cacheKey);
+    const {
+      fullName,
+      phone,
+      addressLine1,
+      addressLine2,
+      city,
+      state,
+      postalCode,
+      country,
+      landmark,
+      addressType,
+      isDefault,
+    } = req.body;
+    if (isDefault === true && address.isDefault !== true) {
+      await addressModel.updateMany(
+        {
+        user:req.user.id,
+        _id: {$ne:addressId},
+        isDefault:true
+      },
+      {
+         $set: { isDefault: false },
+      }
+    )
+    }
+
+    // Update only provided fields
+    if(fullName !== undefined) address.fullName = fullName;
+    if (phone !== undefined) address.phone = phone;
+    if (addressLine1 !== undefined) address.addressLine1 = addressLine1;
+    if (addressLine2 !== undefined) address.addressLine2 = addressLine2;
+    if (city !== undefined) address.city = city;
+    if (state !== undefined) address.state = state;
+    if (postalCode !== undefined) address.postalCode = postalCode;
+    if (country !== undefined) address.country = country;
+    if (landmark !== undefined) address.landmark = landmark;
+    if (addressType !== undefined) address.addressType = addressType;
+    if (isDefault !== undefined) address.isDefault = isDefault;
+
+    const updatedAddress = await address.save();
+    return res.status(200).send({
+      message:"Address updated successfully!",
+      success:true,
+      address:updatedAddress
+    })
+  } catch (error) {
+    console.error("Update Address Error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error
+    });
+  }
+};
+
+export const deleteAddress = async (req,res) => {
+  try {
+    const addressId = req.params.id;
+    const cacheKey = `getsingleaddress:${addressId}`;
+    const address = await addressModel.findOneAndDelete({
+      _id:addressId,
+      user:req.user.id
+    });
+    if(!address) return res.status(404).send({message:"Address not found!",success:false});
+    await redis.del(cacheKey);
+     return res.status(200).json({
+      success: true,
+      message: "Address deleted successfully",
+    });
+  } catch (error) {
+     console.error("Delete Address Error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error
+    });
+  }
+}
