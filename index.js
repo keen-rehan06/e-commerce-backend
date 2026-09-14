@@ -3,6 +3,7 @@ import cookieParser from "cookie-parser";
 import { configDotenv } from "dotenv";
 import { connectDb } from "./src/config/db/db.js";
 import redis from "./src/config/redis/redis.js";
+import { razorpayWebhooks } from "./src/controllers/payment.controller.js";
 
 configDotenv({path:".env"});
 
@@ -19,9 +20,14 @@ const app = express();
 app.use(express.json({limit:"16kb"}));
 app.use(express.urlencoded({extended:true,limit:"16kb"}));
 app.use(cookieParser());
+app.use(
+    "/payment/webhook/razorpay",
+    express.raw({type: "application/json"}),
+    razorpayWebhooks
+)
 
 app.get("/",(req,res)=>{
-    res.send("Hello")
+    res.send("Hello from E-commerce project.")
 });
 
 const PORT = process.env.PORT || 4000;
