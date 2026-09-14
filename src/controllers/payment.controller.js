@@ -40,18 +40,11 @@ export const createPaymentOrder = async (req, res) => {
   }
 };
 
-export const verifyPayment = async (req,res) => {
+export const verifyPayment = async (req, res) => {
   try {
-    const {
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature
-    } = req.body;
-    if (
-      !razorpay_order_id ||
-      !razorpay_payment_id ||
-      !razorpay_signature
-    ) {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
+      req.body;
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return res.status(400).json({
         success: false,
         message: "Payment details are required",
@@ -59,47 +52,92 @@ export const verifyPayment = async (req,res) => {
     }
     const body = `${razorpay_order_id} | ${razorpay_payment_id}`;
     const expectedSigniture = crypto
-    .createHmac("sha256",process.env.RAZORPAY_SECRET_KEY)
-    .update(body)
-    .digest("hex") 
-    if(expectedSigniture !== razorpay_signature) return res.status(400).send({message:"Invaid payment signiture!",success:false});
+      .createHmac("sha256", process.env.RAZORPAY_SECRET_KEY)
+      .update(body)
+      .digest("hex");
+    if (expectedSigniture !== razorpay_signature)
+      return res
+        .status(400)
+        .send({ message: "Invaid payment signiture!", success: false });
     const payment = await paymentModel.findOne({
-      razorpayOrderId:razorpay_order_id,
-      user:req.user._id
-    })
-    if(!payment) return res.status(404).send({message:"Payment record not found!",success:false})
+      razorpayOrderId: razorpay_order_id,
+      user: req.user._id,
+    });
+    if (!payment)
+      return res
+        .status(404)
+        .send({ message: "Payment record not found!", success: false });
     razorpay.razorpayPaymentId = razorpay_payment_id;
     razorpay.razorpaySignature = razorpay_signature;
     razorpay.status = "SUCCESS";
     await payment.save();
-     return res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Payment verified successfully",
       data: payment,
     });
   } catch (error) {
     console.log(error.message);
-      return res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Payment verification failed",
-      error
+      error,
     });
   }
-}
+};
 
-export const razorpayWebhooks = async (req,res) => {
+export const razorpayWebhooks = async (req, res) => {
   try {
-    const webhookSigniture = req.headers['x-razorpay-signature'];
+    const webhookSigniture = req.headers["x-razorpay-signature"];
 
-    if(!webhookSigniture) return res.status(400).send({message:"webhook signature missing!",success:false});
-    const expectedSigniture = crypto
-    .createHmac("sha256",process.env.RAZORPAY_WEBHOOK_SECRET);
-    if(expectedSigniture !== webhookSigniture) return res.status(400).send({message:"Invalid webhook signature",success:false});
+    if (!webhookSigniture)
+      return res
+        .status(400)
+        .send({ message: "webhook signature missing!", success: false });
+    const expectedSigniture = crypto.createHmac(
+      "sha256",
+      process.env.RAZORPAY_WEBHOOK_SECRET,
+    );
+    if (expectedSigniture !== webhookSigniture)
+      return res
+        .status(400)
+        .send({ message: "Invalid webhook signature", success: false });
     const event = JSON.parse(req.body.toString());
-    if(event.event === "payment.captured") {
-      const razorpayPayment 
+    if (event.event === "payment.captured") {
+      const razorpayPayment = event.payload.payment.entity;
+      await paymentModel.findOneAndUpdate(
+        {
+          razorpayOrderId: razorpayPayment.order_id,
+        },
+        {
+          razorpayPaymentId: razorpayPayment.id,
+          status: "SUCCESS",
+        },
+      );
     }
+    if (event.event === "payment.failed") {
+      const razorpayPayment = event.payload.payment.entity;
+
+      await paymentModel.findOneAndUpdate(
+        {
+          razorpayOrderId: razorpayPayment.order_id,
+        },
+        {
+          razorpayPaymentId: razorpayPayment.id,
+          status: "FAILED",
+        },
+      );
+    }
+    return res.status(200).json({
+      success: true,
+    });
   } catch (error) {
-    
+    console.error("Razorpay Webhook Error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Webhook processing failed",
+      error,
+    });
   }
-}
+};
