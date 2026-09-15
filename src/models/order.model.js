@@ -9,7 +9,7 @@ const orderItemSchema = new mongoose.Schema(
     },
     variant: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "varinat",
+      ref: "variant",
       required: true,
     },
     quantity: {
@@ -116,7 +116,7 @@ const orderSchema = new mongoose.Schema(
         "CONFIRMED",
         "PROCESSING",
         "SHIPPED",
-        "DELIVERD",
+        "DELIVERED",
         "CANCELLED",
       ],
       default: "PENDING",
