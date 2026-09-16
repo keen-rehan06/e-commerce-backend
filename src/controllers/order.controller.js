@@ -3,6 +3,7 @@ import { addressModel } from "../models/address.model.js";
 import { cartModel } from "../models/cart.model.js";
 import { variantModel } from "../models/variant.model.js";
 import redis from "../config/redis/redis.js";
+import razorpay from "../config/payment/razorpay.payment.js";
 import { productModel } from "../models/product.model.js";
 
 export const createOrder = async (req, res) => {
@@ -77,13 +78,43 @@ export const createOrder = async (req, res) => {
       paymentMethod,
     });
 
-    // clear cart
-    cart.items = [];
-    await cart.save();
+    if (paymentMethod === "RAZORPAY") {
+      const razorPayOrder = await razorpay.orders.create({
+        amount: Math.round(totalAmount * 100),
+        currency: "INR",
+        receipt: order._id.toString(),
+      });
+      order.razorpayOrderId = razorPayOrder.id;
+      await order.save();
+      // clear cart
+      cart.items = [];
+      await cart.save();
 
-    return res
-      .status(201)
-      .json({ success: true, message: "Order created successfully", order });
+      return res.status(201).json({
+        success: true,
+        message: "Order created successfully",
+        order,
+        payment: {
+          id: razorPayOrder.id,
+          amount: razorPayOrder.amount,
+          currency: razorPayOrder.currency,
+        },
+      });
+    }
+
+    if (paymentMethod === "COD") {
+      cart.items = [];
+      await cart.save();
+      return res.status(201).json({
+        success: true,
+        message: "Order created successfully",
+        order,
+      });
+    }
+    return res.status(400).json({
+      success: false,
+      message: "Invalid payment method",
+    });
   } catch (error) {
     console.log(error.message);
 
