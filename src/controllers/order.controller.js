@@ -15,6 +15,13 @@ export const createOrder = async (req, res) => {
         message: "Address and payment method are required!",
         success: false,
       });
+
+      if(!["RAZORPAY","COD"].includes(paymentMethod))   
+         return res.status(400).json({
+      success: false,
+      message: "Invalid payment method",
+    });
+    
     const address = await addressModel.findOne({
       _id: addressId,
       user: userId,
@@ -53,7 +60,7 @@ export const createOrder = async (req, res) => {
       const subtotal = price * cartItem.quantity;
       orderItems.push({
         product: cartItem.product,
-        variant: cartItem.varinat,
+        variant: cartItem.variant,
         quantity: cartItem.quantity,
         price,
         subtotal,
@@ -111,10 +118,7 @@ export const createOrder = async (req, res) => {
         order,
       });
     }
-    return res.status(400).json({
-      success: false,
-      message: "Invalid payment method",
-    });
+  
   } catch (error) {
     console.log(error.message);
 
