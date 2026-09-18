@@ -5,25 +5,31 @@ import { variantModel } from "../models/variant.model.js";
 import redis from "../config/redis/redis.js";
 import razorpay from "../config/payment/razorpay.payment.js";
 import { productModel } from "../models/product.model.js";
-import { ReplyError } from "ioredis";
+import { createPaymentOrder } from "./payment.controller.js";
 
 export const createOrder = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { 
-      addressId, 
-      paymentMethod, 
-      source,
-      variantId,
-      quantity
-     } = req.body;
-
+    const { addressId, paymentMethod, source, quantity } = req.body;
+    const variantId = req.params.id;
     // Validate basic fields
     if (!addressId || !paymentMethod || !source)
       return res.status(400).json({
         success: false,
         message: "Address, payment method and source are required!",
       });
+
+    if (!["COD", "RAZORPAY"].includes(paymentMethod)) {
+      return res
+        .status(400)
+        .send({ success: false, message: "Invalid payment method." });
+    }
+
+    if (!["CART", "BUY_NOW"].includes(source)) {
+      return res
+        .status(400)
+        .send({ success: false, message: "Invalid order source." });
+    }
 
     const address = await addressModel.findOne({
       _id: addressId,
@@ -40,26 +46,25 @@ export const createOrder = async (req, res) => {
 
     // CART ORDER
     if (source === "CART") {
-      const cartKey = `cart:${userId}`;
-      const cart = await redis.get(cartKey);
-      if (!cart)
-        return res.status(404).send({
+      const cart = await cartModel.findOne({
+        user: userId,
+      });
+
+      if (!cart || !cart.items || cart.items.length === 0)
+        return res.status(404).json({
           success: false,
-          message: "Cart is empty.",
+          message: "Cart is empty!",
         });
-      const parsedCart = JSON.parse(cart);
-      if (!parsedCart.items || parsedCart.items.length === 0) return;
-      res.status(400).send({ message: "Cart is Empty!", success: false });
 
       // verify every cart item from DB
-      for (const item of parsedCart.items) {
+      for (const item of cart.items) {
         const variant = await variantModel
           .findById(item.variantId)
           .populate("product");
         if (!variant)
           return res.status(404).send({
             success: false,
-            message: "Variant ${item.variantId} not found.",
+            message: `Variant ${item.variantId} not found.`,
           });
         orderItems.push({
           product: variant.product._id,
@@ -68,15 +73,19 @@ export const createOrder = async (req, res) => {
           price: variant.price,
         });
       }
-    } else if (source === "BUY_NOW") {
+    }
+    // BUY NOW ORDER
+    if (source === "BUY_NOW") {
       if (!variantId || !quantity || quantity < 1)
         return res.status(400).send({
           success: false,
           message: "Variant and valid quantity are required!",
         });
+
       const variant = await variantModel
         .findById(variantId)
         .populate("product");
+
       if (!variant)
         return res
           .status(404)
@@ -88,14 +97,9 @@ export const createOrder = async (req, res) => {
         quantity,
         price: variant.price,
       });
-    } else {
-      return res.status(401).send({
-        success: false,
-        message: "Invalid order source",
-      });
     }
-    // CALCULATE TOTAL
 
+    // CALCULATE TOTAL
     const totalAmount = orderItems.reduce((total, item) => {
       return total + item.price * item.quantity;
     }, 0);
@@ -106,20 +110,44 @@ export const createOrder = async (req, res) => {
       address: addressId,
       items: orderItems,
       totalAmount,
-      paymentMethod,
+      paymentMethod: "COD",
       paymentStatus: "PENDING",
-      orderStatus: "PENDING",
+      orderStatus: "CONFIRMED",
     });
-    // CLEAR CART ONLY AFTER CART ORDER
 
-    if (source === "CART") {
-      await redis.del(`cart:${userId}`);
+    // COD (CASH ON DELIVERY)
+    if (paymentMethod === "COD") {
+      // CLEAR CART ONLY AFTER CART ORDER
+      await cartModel.deleteOne({ user: userId });
+      return res.status(201).json({
+        success: true,
+        message: "COD Order created successfully",
+        order,
+      });
     }
-    return res.status(201).json({
-      success: true,
-      message: "Order created successfully",
-      order,
-    });
+    if (paymentMethod === "RAZORPAY") {
+      const razorpayOrder = await createPaymentOrder({
+        userId,
+        amount: totalAmount,
+        receipt: order._id.toString(),
+      });
+
+      // SAVE RAZORPAY ORDER ID
+
+      order.razorpayOrderId = razorpayOrder.id;
+      await order.save();
+
+      return res.status(201).send({
+        success: true,
+        message: "Razorpay order created successfully",
+        orderId: order._id,
+        razorpay: {
+          id: razorpayOrder.id,
+          amount: razorpayOrder.amount,
+          currency: razorpayOrder.currency,
+        },
+      });
+    }
   } catch (error) {
     console.error("Create Order Error:", error.message);
 

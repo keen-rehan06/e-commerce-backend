@@ -1,9 +1,8 @@
 import razorpay from "../config/payment/razorpay.payment.js";
 import { paymentModel } from "../models/payment.model.js";
 
-export const createPaymentOrder = async (req, res) => {
+export const createPaymentOrder = async ({userId, amount,receipt}) => {
   try {
-    const { amount } = req.body;
     if (!amount || amount <= 0)
       return res
         .status(401)
@@ -15,13 +14,13 @@ export const createPaymentOrder = async (req, res) => {
     };
     const razorpayOrder = await razorpay.orders.create(options);
     const payment = await paymentModel.create({
-      user: req.user.id,
+      user: userId,
       amount,
       currency: "INR",
       status: "PENDING",
       razorpayOrderId: razorpayOrder.id,
     });
-    return res.status(201).json({
+    return {
       success: true,
       message: "Payment order created successfully",
       data: {
@@ -30,7 +29,7 @@ export const createPaymentOrder = async (req, res) => {
         amount: razorpayOrder.amount,
         currency: razorpayOrder.currency,
       },
-    });
+    };
   } catch (error) {
     console.error("Create Payment Order Error:", error);
     return res.status(500).json({
