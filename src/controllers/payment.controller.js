@@ -1,16 +1,16 @@
 import razorpay from "../config/payment/razorpay.payment.js";
+import { orderModel } from "../models/order.model.js";
 import { paymentModel } from "../models/payment.model.js";
+import crypto from "crypto";
 
 export const createPaymentOrder = async ({userId, amount,receipt}) => {
   try {
     if (!amount || amount <= 0)
-      return res
-        .status(401)
-        .send({ message: "Valid amount is required", success: false });
+  throw new Error("Valid amount is required")
     const options = {
       amount: Math.round(amount * 100),
       currency: "INR",
-      receipt: `receipt_${Date.now()}`,
+      receipt,
     };
     const razorpayOrder = await razorpay.orders.create(options);
     const payment = await paymentModel.create({
@@ -32,10 +32,7 @@ export const createPaymentOrder = async ({userId, amount,receipt}) => {
     };
   } catch (error) {
     console.error("Create Payment Order Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to create payment order",
-    });
+    throw new Error("Failed to create payment orde")
   }
 };
 
@@ -49,7 +46,7 @@ export const verifyPayment = async (req, res) => {
         message: "Payment details are required",
       });
     }
-    const body = `${razorpay_order_id} | ${razorpay_payment_id}`;
+    const body = `${razorpay_order_id}|${razorpay_payment_id}`;
     const expectedSigniture = crypto
       .createHmac("sha256", process.env.RAZORPAY_SECRET_KEY)
       .update(body)
@@ -58,18 +55,34 @@ export const verifyPayment = async (req, res) => {
       return res
         .status(400)
         .send({ message: "Invaid payment signiture!", success: false });
+    
+      const order = await orderModel.findOne({
+      razorpayOrderId: razorpay_order_id,
+      user:req.user._id
+    });
+
+    if(!order) return res.status(404).send({
+       message:"orders not found!",
+       success:false
+    });
+       order.paymentStatus = "PAID"
+       order.razorpayPaymentId = razorpay_payment_id;
+       await order.save();
+
     const payment = await paymentModel.findOne({
       razorpayOrderId: razorpay_order_id,
       user: req.user._id,
     });
+
     if (!payment)
       return res
         .status(404)
         .send({ message: "Payment record not found!", success: false });
-    razorpay.razorpayPaymentId = razorpay_payment_id;
-    razorpay.razorpaySignature = razorpay_signature;
-    razorpay.status = "SUCCESS";
+    payment.razorpayPaymentId = razorpay_payment_id;
+    payment.razorpaySignature = razorpay_signature;
+    payment.status = "SUCCESS";
     await payment.save();
+
     return res.status(200).json({
       success: true,
       message: "Payment verified successfully",
@@ -93,10 +106,10 @@ export const razorpayWebhooks = async (req, res) => {
       return res
         .status(400)
         .send({ message: "webhook signature missing!", success: false });
-    const expectedSigniture = crypto.createHmac(
-      "sha256",
-      process.env.RAZORPAY_WEBHOOK_SECRET,
-    );
+    const expectedSigniture = crypto
+    .createHmac("sha256",process.env.RAZORPAY_WEBHOOK_SECRET)
+    .update(req.body)
+    .digest("hex")
     if (expectedSigniture !== webhookSigniture)
       return res
         .status(400)
@@ -113,6 +126,15 @@ export const razorpayWebhooks = async (req, res) => {
           status: "SUCCESS",
         },
       );
+
+      await orderModel.findOneAndUpdate(
+        {
+          razorpayOrderId:razorpayPayment.order_id,
+        },
+        {
+          paymentStatus:"PAID"
+        }
+      )
     }
     if (event.event === "payment.failed") {
       const razorpayPayment = event.payload.payment.entity;
@@ -126,6 +148,15 @@ export const razorpayWebhooks = async (req, res) => {
           status: "FAILED",
         },
       );
+
+      await orderModel.findOneAndUpdate(
+        {
+          razorpayOrderId:razorpayPayment.order_id,
+        },
+        {
+          paymentStatus:"FAILED"
+        }
+      )
     }
     return res.status(200).json({
       success: true,
