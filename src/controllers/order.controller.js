@@ -3,7 +3,6 @@ import { addressModel } from "../models/address.model.js";
 import { cartModel } from "../models/cart.model.js";
 import { variantModel } from "../models/variant.model.js";
 import redis from "../config/redis/redis.js";
-import { productModel } from "../models/product.model.js";
 import { createPaymentOrder } from "./payment.controller.js";
 
 export const createOrder = async (req, res) => {
@@ -158,51 +157,95 @@ export const createOrder = async (req, res) => {
   }
 };
 
-export const getMyOrder = async (req,res) => {
+export const getMyOrder = async (req, res) => {
   try {
     const userId = req.user.id;
     const cacheKey = `${userId}:allOrders`;
     const cacheData = await redis.get(cacheKey);
-    if(cacheData) {
+    if (cacheData) {
       return res.status(200).send({
-        message:"Orders fetched from cache",
-        orders:JSON.parse(cacheData),
-        success:true
+        message: "Orders fetched from cache",
+        orders: JSON.parse(cacheData),
+        success: true,
       });
     }
-    const page = Math.max(Number(req.query.page)  || 1,1);
-    const limit = Math.min(Number(req.query.limit) || 10,50) 
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.min(Number(req.query.limit) || 10, 50);
     const skip = (page - 1) * limit;
 
-    const [orders,totalOrders] = await Promise.all([
+    const [orders, totalOrders] = await Promise.all([
       orderModel
-      .find({user:userId})
-      .populate("items.product")
-      .populate("items.variant")
-      .populate("address")
-      .sort({createdAt: -1})
-      .skip(skip)
-      .limit(limit),
+        .find({ user: userId })
+        .populate("items.product")
+        .populate("items.variant")
+        .populate("address")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
 
-      orderModel.createDocuments({user:userId})
+      orderModel.createDocuments({ user: userId }),
     ]);
-     
+
+    await redis.set(cacheKey, ...JOSN.stringify(orders), "EX", 300);
+
     return res.status(200).send({
-      message:"Orders fetched from db successfully!",
-      success:true,
-      data:orders,
-      pagination:{
-         currentPage:page,
-         totalPages:Math.ceil(totalOrders/limit),
-         totalOrders,
-         limit
-      }
-    })
+      message: "Orders fetched from db successfully!",
+      success: true,
+      data: orders,
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(totalOrders / limit),
+        totalOrders,
+        limit,
+      },
+    });
   } catch (error) {
-      console.error("Get My Orders Error:", error.message);
+    console.error("Get My Orders Error:", error.message);
     return res.status(500).json({
       success: false,
       message: "Failed to fetch orders",
     });
   }
-}
+};
+
+export const getSingleOrder = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const orderId = req.params.id;
+    const cacheKey = `order:${userId}`;
+    const cacheData = await redis.get(cacheKey);
+    if (cacheData) {
+      return res.status(200).send({
+        message: "Orders fetch successfully!",
+        source: "redis",
+        ...JSON.parse(cacheData),
+        success: true,
+      });
+    }
+    const order = await orderModel
+      .findOne({
+        _id: orderId,
+        user: userId,
+      })
+      .populate("items.product")
+      .populate("items.variant")
+      .populate("address");
+
+    if (!order)
+      return res.status(404).send({
+        message: "Order not found!",
+        success: false,
+      });
+    await redis.set(cacheKey, ...JOSN.stringify(order), "EX", 300);
+
+    return res.status(200).send({
+      message:"Order fetched successfully!",
+      source:"db",
+      success:true,
+      order
+    })
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).send({message:"failed to fetched order",success:false,error})
+  }
+};
