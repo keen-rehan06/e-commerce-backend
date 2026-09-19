@@ -239,13 +239,60 @@ export const getSingleOrder = async (req, res) => {
     await redis.set(cacheKey, ...JOSN.stringify(order), "EX", 300);
 
     return res.status(200).send({
-      message:"Order fetched successfully!",
-      source:"db",
-      success:true,
-      order
-    })
+      message: "Order fetched successfully!",
+      source: "db",
+      success: true,
+      order,
+    });
   } catch (error) {
     console.log(error.message);
-    return res.status(500).send({message:"failed to fetched order",success:false,error})
+    return res
+      .status(500)
+      .send({ message: "failed to fetched order", success: false, error });
+  }
+};
+
+export const cancelOrder = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const orderId = req.params.id;
+    const order = await orderModel.findOne({
+      _id: orderId,
+      user: userId,
+    });
+
+    if (!order)
+      return res.status(404).send({
+        message: "Order not found!",
+        success: false,
+      });
+
+    if (order.orderStatus === "CANCELLED") {
+      return res
+        .status(401)
+        .send({ message: "Order is already cancelled.", success: false });
+    }
+
+    if (order.orderStatus === "DELIVERED") {
+      return res
+        .status(401)
+        .send({ message: "Order can not be cancelled", success: false });
+    }
+    order.orderStatus = "CANCELLED";
+    await order.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Order cancelled successfully",
+      data: order,
+    });
+  } catch (error) {
+    console.error("Cancel Order Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to cancel order",
+      error,
+    });
   }
 };

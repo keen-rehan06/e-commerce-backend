@@ -104,6 +104,19 @@ const orderSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    orderStatus: {
+      type: String,
+      enum: [
+        "PENDING",
+        "CONFIRMED",
+        "PROCESSING",
+        "SHIPPED",
+        "DELIVERED",
+        "CANCELLED",
+      ],
+      default: "PENDING",
+      index: true,
+    },
     paymentMethod: {
       type: String,
       enum: ["RAZORPAY", "COD"],
@@ -149,5 +162,5 @@ const orderSchema = new mongoose.Schema(
   {
     timestamps: true,
   },
-); 
+);
 export const orderModel = new mongoose.model("order", orderSchema);
