@@ -3,7 +3,6 @@ import { addressModel } from "../models/address.model.js";
 import { cartModel } from "../models/cart.model.js";
 import { variantModel } from "../models/variant.model.js";
 import redis from "../config/redis/redis.js";
-import razorpay from "../config/payment/razorpay.payment.js";
 import { productModel } from "../models/product.model.js";
 import { createPaymentOrder } from "./payment.controller.js";
 
@@ -110,7 +109,7 @@ export const createOrder = async (req, res) => {
       address: addressId,
       items: orderItems,
       totalAmount,
-      paymentMethod: "COD",
+      paymentMethod,
       paymentStatus: "PENDING",
       orderStatus: "CONFIRMED",
     });
@@ -158,3 +157,5 @@ export const createOrder = async (req, res) => {
     });
   }
 };
+
+export const 
