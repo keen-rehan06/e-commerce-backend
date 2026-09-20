@@ -136,23 +136,11 @@ const orderSchema = new mongoose.Schema(
       default: "PENDING",
       index: true,
     },
-    refund: {
-      refundId: {
-        type: String,
-      },
-      amount: {
-        type: Number,
-      },
-      status: {
-        type: String,
-        enum: ["PENDING", "PROCESSED", "FAILED"],
-      },
-      reason: {
-        type: String,
-      },
-      refundedAt: {
-        type: Date,
-      },
+    refundId: {
+      type: String,
+    },
+    refundedAt: {
+      type: Date,
     },
     razorpayOrderId: {
       type: String,

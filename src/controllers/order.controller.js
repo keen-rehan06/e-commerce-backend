@@ -4,6 +4,7 @@ import { cartModel } from "../models/cart.model.js";
 import { variantModel } from "../models/variant.model.js";
 import redis from "../config/redis/redis.js";
 import { createPaymentOrder } from "./payment.controller.js";
+import { razorpay } from "../config/payment/razorpay.payment.js";
 
 export const createOrder = async (req, res) => {
   try {
@@ -278,6 +279,20 @@ export const cancelOrder = async (req, res) => {
       return res
         .status(401)
         .send({ message: "Delivered order can not be cancelled", success: false });
+    }
+
+    if(order.paymentMethod === "RAZORPAY" && order.paymentStatus === "PAID") {
+         if(!order.razorpayPaymentId) return res.status(404).send({message:"Razorpay Payment Id not found!",success:false});
+
+         const refund = await razorpay.payments.refund(
+          order.razorpayPaymentId,
+          {
+            amount: Math.round(order.totalAmount * 100),
+          }
+         );
+         order.paymentStatus = "REFUNDED";
+         order.refundId = refund.id;
+         order.refundedAt = new Date();
     }
 
     order.orderStatus = "CANCELLED";
