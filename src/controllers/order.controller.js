@@ -256,6 +256,7 @@ export const cancelOrder = async (req, res) => {
   try {
     const userId = req.user.id;
     const orderId = req.params.id;
+    
     const order = await orderModel.findOne({
       _id: orderId,
       user: userId,
@@ -276,8 +277,9 @@ export const cancelOrder = async (req, res) => {
     if (order.orderStatus === "DELIVERED") {
       return res
         .status(401)
-        .send({ message: "Order can not be cancelled", success: false });
+        .send({ message: "Delivered order can not be cancelled", success: false });
     }
+
     order.orderStatus = "CANCELLED";
     await order.save();
 
