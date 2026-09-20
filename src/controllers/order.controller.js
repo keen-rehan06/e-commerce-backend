@@ -313,3 +313,50 @@ export const cancelOrder = async (req, res) => {
     });
   }
 };
+
+//  get allorders fro vendor or admin
+export const getAllOrders = async (req,res) => {
+  try {
+    const page = Math.max(Number(req.query.page || 1),1);
+    const limit = Math.min(Number(req.query.limit || 10),50);
+    const skip = (page-1) * limit;
+
+    const filter ={};
+
+    if(req.query.status) {
+       filter.orderStatus = req.query.status.toString();
+    }
+
+    const [orders,totalOrders] = await Promise.all([
+        orderModel.find(filter)
+        .populate("user","name email")
+        .populate("items.variant")
+        .populate("items.product")
+        .populate("address")
+        .sort({createdAt:-1})
+        .skip(skip)
+        .limit(limit),
+
+        orderModel.createDocuments(filter),
+    ]);
+    return res.status(200).send({
+      message:"Orders fetched successfully!",
+      success:true,
+      data:orders,
+      pagination:{
+        currentPage: page,
+        totalPages: Math.ceil(totalOrders/limit),
+        totalOrders,
+        limit
+      }
+    })
+  } catch (error) {
+    console.error("Get All Orders Error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch orders",
+      error
+    });
+  }
+}
