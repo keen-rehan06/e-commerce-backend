@@ -5,6 +5,7 @@ import { variantModel } from "../models/variant.model.js";
 import redis from "../config/redis/redis.js";
 import { createPaymentOrder } from "./payment.controller.js";
 import { razorpay } from "../config/payment/razorpay.payment.js";
+import { releaseInventory } from "./inventory.controller.js";
 
 export const createOrder = async (req, res) => {
   try {
@@ -289,6 +290,13 @@ export const cancelOrder = async (req, res) => {
           message: "Delivered order can not be cancelled",
           success: false,
         });
+    }
+
+    for(const items of order.items) {
+      await releaseInventory({
+        variantId:items.variant,
+        quantity:items.quantity
+      })
     }
 
     if (order.paymentMethod === "RAZORPAY" && order.paymentStatus === "PAID") {

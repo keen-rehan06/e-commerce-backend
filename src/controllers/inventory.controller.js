@@ -249,4 +249,27 @@ export const reserveInventory = async ({variantId, quantity}) => {
   }
 }
 
-
+export const releaseInventory = async ({variantId, quantity}) => {
+  try {
+    const inventory = await inventoryModel.findOneAndUpdate(
+      {
+      variant: variantId,
+      reservedQunatity: {$gte:quantity}
+    },
+    {
+      $inc:{
+        reservedQuantity: -quantity
+      }
+    },
+    {
+      new:true
+    }
+  );
+  if(!inventory) throw new Error("Inventory reservation not found");
+  return inventory;
+  } catch (error) {
+    console.log(error)
+    console.log(error.message);
+    throw new Error("Something went wrong!");
+  }
+} 
