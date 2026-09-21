@@ -72,6 +72,13 @@ export const createOrder = async (req, res) => {
           price: variant.price,
         });
       }
+
+      for (const item of orderItems) {
+        await reserveInventory({
+          variantId: item.variant,
+          quantity: item.quantity,
+        });
+      }
     }
     // BUY NOW ORDER
     if (source === "BUY_NOW") {
@@ -257,7 +264,7 @@ export const cancelOrder = async (req, res) => {
   try {
     const userId = req.user.id;
     const orderId = req.params.id;
-    
+
     const order = await orderModel.findOne({
       _id: orderId,
       user: userId,
@@ -278,21 +285,24 @@ export const cancelOrder = async (req, res) => {
     if (order.orderStatus === "DELIVERED") {
       return res
         .status(401)
-        .send({ message: "Delivered order can not be cancelled", success: false });
+        .send({
+          message: "Delivered order can not be cancelled",
+          success: false,
+        });
     }
 
-    if(order.paymentMethod === "RAZORPAY" && order.paymentStatus === "PAID") {
-         if(!order.razorpayPaymentId) return res.status(404).send({message:"Razorpay Payment Id not found!",success:false});
+    if (order.paymentMethod === "RAZORPAY" && order.paymentStatus === "PAID") {
+      if (!order.razorpayPaymentId)
+        return res
+          .status(404)
+          .send({ message: "Razorpay Payment Id not found!", success: false });
 
-         const refund = await razorpay.payments.refund(
-          order.razorpayPaymentId,
-          {
-            amount: Math.round(order.totalAmount * 100),
-          }
-         );
-         order.paymentStatus = "REFUNDED";
-         order.refundId = refund.id;
-         order.refundedAt = new Date();
+      const refund = await razorpay.payments.refund(order.razorpayPaymentId, {
+        amount: Math.round(order.totalAmount * 100),
+      });
+      order.paymentStatus = "REFUNDED";
+      order.refundId = refund.id;
+      order.refundedAt = new Date();
     }
 
     order.orderStatus = "CANCELLED";
@@ -315,87 +325,80 @@ export const cancelOrder = async (req, res) => {
 };
 
 //  get allorders fro vendor or admin
-export const getAllOrders = async (req,res) => {
+export const getAllOrders = async (req, res) => {
   try {
-    const page = Math.max(Number(req.query.page || 1),1);
-    const limit = Math.min(Number(req.query.limit || 10),50);
-    const skip = (page-1) * limit;
+    const page = Math.max(Number(req.query.page || 1), 1);
+    const limit = Math.min(Number(req.query.limit || 10), 50);
+    const skip = (page - 1) * limit;
 
-    const filter ={};
+    const filter = {};
 
-    if(req.query.status) {
-       filter.orderStatus = req.query.status.toString();
+    if (req.query.status) {
+      filter.orderStatus = req.query.status.toString();
     }
 
-    const [orders,totalOrders] = await Promise.all([
-        orderModel.find(filter)
-        .populate("user","name email")
+    const [orders, totalOrders] = await Promise.all([
+      orderModel
+        .find(filter)
+        .populate("user", "name email")
         .populate("items.variant")
         .populate("items.product")
         .populate("address")
-        .sort({createdAt:-1})
+        .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
 
-        orderModel.createDocuments(filter),
+      orderModel.createDocuments(filter),
     ]);
     return res.status(200).send({
-      message:"Orders fetched successfully!",
-      success:true,
-      data:orders,
-      pagination:{
+      message: "Orders fetched successfully!",
+      success: true,
+      data: orders,
+      pagination: {
         currentPage: page,
-        totalPages: Math.ceil(totalOrders/limit),
+        totalPages: Math.ceil(totalOrders / limit),
         totalOrders,
-        limit
-      }
-    })
+        limit,
+      },
+    });
   } catch (error) {
     console.error("Get All Orders Error:", error.message);
 
     return res.status(500).json({
       success: false,
       message: "Failed to fetch orders",
-      error
+      error,
     });
   }
-}
+};
 
-export const updateOrder = async (req,res) => {
+export const updateOrder = async (req, res) => {
   try {
-    const {status} = req.body;
+    const { status } = req.body;
     const orderId = req.params;
-    const allowedStatuses = [
-      "CONFIRMED",
-      "PROCESSING",
-      "SHIPPED",
-      "DELIVERED",
-    ];
-    if(!status) return res
-    .status(401)
-    .send({
-      message:"Order status is required!",
-      success:false
-    });
+    const allowedStatuses = ["CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED"];
+    if (!status)
+      return res.status(401).send({
+        message: "Order status is required!",
+        success: false,
+      });
 
     const newStatus = status.toUppercase();
 
-    if(!allowedStatuses.includes(newStatus)) return res
-    .status(400)
-    .send({
-      message:"Invalid order status",
-      success:false
-    });
+    if (!allowedStatuses.includes(newStatus))
+      return res.status(400).send({
+        message: "Invalid order status",
+        success: false,
+      });
 
-    const order = await orderModel.findById(orderId)  
-    if(!order) return res
-    .status(404)
-    .send({
-      message:"Order not found!",
-      sucess:false
-    });
+    const order = await orderModel.findById(orderId);
+    if (!order)
+      return res.status(404).send({
+        message: "Order not found!",
+        sucess: false,
+      });
 
-     if (order.orderStatus === "CANCELLED") {
+    if (order.orderStatus === "CANCELLED") {
       return res.status(400).json({
         success: false,
         message: "Cancelled order status cannot be changed",
@@ -412,33 +415,30 @@ export const updateOrder = async (req,res) => {
     const statusFlow = {
       CONFIRMED: ["PROCCESSING"],
       PROCCESSING: ["SHIPPED"],
-      SHIPPED: ["DELIVERED"]
-    }
+      SHIPPED: ["DELIVERED"],
+    };
 
-    if(!statusFlow[order.orderStatus]?.includes(newStatus)) {
-      return res
-      .status(400)
-      .send({
-        message:`Cannot change order status from ${order.orderStatus} to ${newStatus}`,
-        success:false
-      })
+    if (!statusFlow[order.orderStatus]?.includes(newStatus)) {
+      return res.status(400).send({
+        message: `Cannot change order status from ${order.orderStatus} to ${newStatus}`,
+        success: false,
+      });
     }
 
     order.orderStatus = newStatus;
     await order.save();
 
-    return res
-    .send({
-      success:true,
+    return res.send({
+      success: true,
       message: "Order status updated successfully",
-    })
+    });
   } catch (error) {
     console.error("Update Order Status Error:", error.message);
 
     return res.status(500).json({
       success: false,
       message: "Failed to update order status",
-      error
+      error,
     });
   }
-}
+};
