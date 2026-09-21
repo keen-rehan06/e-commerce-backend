@@ -5,7 +5,11 @@ import { variantModel } from "../models/variant.model.js";
 import redis from "../config/redis/redis.js";
 import { createPaymentOrder } from "./payment.controller.js";
 import { razorpay } from "../config/payment/razorpay.payment.js";
-import { releaseInventory } from "./inventory.controller.js";
+import {
+  commitInventory,
+  releaseInventory,
+  reserveInventory,
+} from "./inventory.controller.js";
 
 export const createOrder = async (req, res) => {
   try {
@@ -284,19 +288,17 @@ export const cancelOrder = async (req, res) => {
     }
 
     if (order.orderStatus === "DELIVERED") {
-      return res
-        .status(401)
-        .send({
-          message: "Delivered order can not be cancelled",
-          success: false,
-        });
+      return res.status(401).send({
+        message: "Delivered order can not be cancelled",
+        success: false,
+      });
     }
 
-    for(const items of order.items) {
+    for (const items of order.items) {
       await releaseInventory({
-        variantId:items.variant,
-        quantity:items.quantity
-      })
+        variantId: items.variant,
+        quantity: items.quantity,
+      });
     }
 
     if (order.paymentMethod === "RAZORPAY" && order.paymentStatus === "PAID") {
@@ -418,6 +420,14 @@ export const updateOrder = async (req, res) => {
         success: false,
         message: "Delivered order status cannot be changed",
       });
+    }
+    if (newStatus === "DELIVERED") {
+      for (const item of order.items) {
+        await commitInventory({
+          variantId: item.variant,
+          quantity: item.quantity,
+        });
+      }
     }
 
     const statusFlow = {

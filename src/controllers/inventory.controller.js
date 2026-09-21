@@ -198,16 +198,16 @@ export const updateInventory = async (req, res) => {
   }
 }
 
-export const deleteInventory = async (req,res) => {
+export const deleteInventory = async (req, res) => {
   try {
     const inventoryId = req.params.id;
     const cacheKey = `inventory:${inventoryId}`;
-    const inventory = await inventoryModel.findByIdAndDelete(inventoryId);  
-    if(!inventory) return res.status(404).send({message:"Inventory not found!",success:false});
+    const inventory = await inventoryModel.findByIdAndDelete(inventoryId);
+    if (!inventory) return res.status(404).send({ message: "Inventory not found!", success: false });
     await redis.del(cacheKey);
-    return res.status(200).send({message:"Inventory Deleted.",success:true})
+    return res.status(200).send({ message: "Inventory Deleted.", success: true })
   } catch (error) {
-      console.log(error.message);
+    console.log(error.message);
     return res.status(500).json({
       success: false,
       message: "Failed to update inventory",
@@ -216,32 +216,32 @@ export const deleteInventory = async (req,res) => {
   }
 }
 
-export const reserveInventory = async ({variantId, quantity}) => {
+export const reserveInventory = async ({ variantId, quantity }) => {
   try {
     const inventory = await inventoryModel.findOneAndUpdate({
       variant: variantId,
-      $expr:{
-        $gte:[
+      $expr: {
+        $gte: [
           {
-            $subtract:["$quantity","$reservedQuantity"]
+            $subtract: ["$quantity", "$reservedQuantity"]
           },
           quantity
         ]
       }
     },
-    {
-      $inc:{
-        reservedQuantity: quantity
+      {
+        $inc: {
+          reservedQuantity: quantity
+        }
+      },
+      {
+        new: true,
       }
-    },
-    {
-      new: true,
-    }
-  );
+    );
     if (!inventory) {
-    throw new Error("Insufficient stock");
-  }
-  return inventory
+      throw new Error("Insufficient stock");
+    }
+    return inventory
   } catch (error) {
     console.log(error)
     console.log(error.message);
@@ -249,27 +249,48 @@ export const reserveInventory = async ({variantId, quantity}) => {
   }
 }
 
-export const releaseInventory = async ({variantId, quantity}) => {
+export const releaseInventory = async ({ variantId, quantity }) => {
   try {
     const inventory = await inventoryModel.findOneAndUpdate(
       {
-      variant: variantId,
-      reservedQunatity: {$gte:quantity}
-    },
-    {
-      $inc:{
-        reservedQuantity: -quantity
+        variant: variantId,
+        reservedQunatity: { $gte: quantity }
+      },
+      {
+        $inc: {
+          reservedQuantity: -quantity
+        }
+      },
+      {
+        new: true
       }
-    },
-    {
-      new:true
-    }
-  );
-  if(!inventory) throw new Error("Inventory reservation not found");
-  return inventory;
+    );
+    if (!inventory) throw new Error("Inventory reservation not found");
+    return inventory;
   } catch (error) {
     console.log(error)
     console.log(error.message);
     throw new Error("Something went wrong!");
   }
-} 
+}
+
+export const commitInventory = async ({ variantId, quantity }) => {
+  const inventory = await inventoryModel.findOneAndUpdate(
+    {
+      variant: variantId,
+      reservedQuantity: { $gte: quantity },
+      quantity: { $gte: quantity },
+    },
+    {
+       $inc: {
+        quantity: -quantity,
+        reservedQuantity: -quantity,
+      },
+    },
+    {
+      new:true
+    }
+  );
+  if(!inventory) throw new Error("Unable to commit inventory");
+  return inventory;
+}
