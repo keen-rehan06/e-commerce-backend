@@ -360,3 +360,85 @@ export const getAllOrders = async (req,res) => {
     });
   }
 }
+
+export const updateOrder = async (req,res) => {
+  try {
+    const {status} = req.body;
+    const orderId = req.params;
+    const allowedStatuses = [
+      "CONFIRMED",
+      "PROCESSING",
+      "SHIPPED",
+      "DELIVERED",
+    ];
+    if(!status) return res
+    .status(401)
+    .send({
+      message:"Order status is required!",
+      success:false
+    });
+
+    const newStatus = status.toUppercase();
+
+    if(!allowedStatuses.includes(newStatus)) return res
+    .status(400)
+    .send({
+      message:"Invalid order status",
+      success:false
+    });
+
+    const order = await orderModel.findById(orderId)  
+    if(!order) return res
+    .status(404)
+    .send({
+      message:"Order not found!",
+      sucess:false
+    });
+
+     if (order.orderStatus === "CANCELLED") {
+      return res.status(400).json({
+        success: false,
+        message: "Cancelled order status cannot be changed",
+      });
+    }
+
+    if (order.orderStatus === "DELIVERED") {
+      return res.status(400).json({
+        success: false,
+        message: "Delivered order status cannot be changed",
+      });
+    }
+
+    const statusFlow = {
+      CONFIRMED: ["PROCCESSING"],
+      PROCCESSING: ["SHIPPED"],
+      SHIPPED: ["DELIVERED"]
+    }
+
+    if(!statusFlow[order.orderStatus]?.includes(newStatus)) {
+      return res
+      .status(400)
+      .send({
+        message:`Cannot change order status from ${order.orderStatus} to ${newStatus}`,
+        success:false
+      })
+    }
+
+    order.orderStatus = newStatus;
+    await order.save();
+
+    return res
+    .send({
+      success:true,
+      message: "Order status updated successfully",
+    })
+  } catch (error) {
+    console.error("Update Order Status Error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update order status",
+      error
+    });
+  }
+}
