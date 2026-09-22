@@ -113,3 +113,39 @@ export const getProductReviews = async (req, res) => {
     });
   }
 };
+
+export const updateReview = async (req, res) => {
+  try {
+    const reviewId = req.params.id;
+    const userId = req.user.id;
+    const { comment, rating } = req.body;
+    const cacheKey = `reviews:${productId}`;
+
+    const review = await reviewModel.findOne({
+      _id: reviewId,
+      user: userId,
+    });
+    if (!review)
+      return res.status(404).send({
+        message: "Review not found or unaouthorized!",
+        success: false,
+      });
+    await redis.del(cacheKey);
+    if (comment !== undefined) review.comment = comment;
+    if (rating !== undefined) review.rating = rating;
+    await review.save();
+    await redis.set(cacheKey, ...JSON.stringify(review), "EX", 300);
+    return res.status(200).send({
+      message: "Review updated successfully",
+      success: true,
+      review,
+    });
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Somethig went wrong!",
+      error
+    });
+  }
+};
