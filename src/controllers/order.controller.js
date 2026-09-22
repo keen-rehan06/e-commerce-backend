@@ -170,7 +170,7 @@ export const createOrder = async (req, res) => {
   }
 };
 
-export const getMyOrder = async (req, res) => {
+export const getMyAllOrder = async (req, res) => {
   try {
     const userId = req.user.id;
     const cacheKey = `${userId}:allOrders`;
@@ -334,7 +334,7 @@ export const cancelOrder = async (req, res) => {
   }
 };
 
-//  get allorders fro vendor or admin
+//  get allorders for vendor or admin
 export const getAllOrders = async (req, res) => {
   try {
     const page = Math.max(Number(req.query.page || 1), 1);
@@ -460,3 +460,4 @@ export const updateOrder = async (req, res) => {
     });
   }
 };
+
