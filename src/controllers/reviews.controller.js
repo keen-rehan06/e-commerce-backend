@@ -145,7 +145,37 @@ export const updateReview = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Somethig went wrong!",
-      error
+      error,
     });
   }
-}; 
+};
+
+export const deleteReview = async (req, res) => {
+  try {
+    const reviewId = req.params.id;
+    const review = await reviewModel.findById(reviewId);
+    if (!review)
+      return res
+        .status(404)
+        .send({ message: "Review not found!", success: false });
+    if (review.user.toString() !== req.user.id) {
+      return res
+        .status(403)
+        .send({
+          message: "You are not allowed to delete this review",
+          success: false,
+        });
+    }
+    await reviewModel.findByIdAndDelete(reviewId);
+    return res
+      .status(200)
+      .send({ message: "review deleted successfully!", success: true });
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).json({
+      success: false,
+      message: "something went wrong!",
+      error,
+    });
+  }
+};
