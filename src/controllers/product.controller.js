@@ -283,3 +283,4 @@ export const deleteSingleProduct = async (req, res) => {
     });
   }
 };
+
