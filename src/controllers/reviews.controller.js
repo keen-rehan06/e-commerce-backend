@@ -159,12 +159,10 @@ export const deleteReview = async (req, res) => {
         .status(404)
         .send({ message: "Review not found!", success: false });
     if (review.user.toString() !== req.user.id) {
-      return res
-        .status(403)
-        .send({
-          message: "You are not allowed to delete this review",
-          success: false,
-        });
+      return res.status(403).send({
+        message: "You are not allowed to delete this review",
+        success: false,
+      });
     }
     await reviewModel.findByIdAndDelete(reviewId);
     return res
@@ -177,5 +175,46 @@ export const deleteReview = async (req, res) => {
       message: "something went wrong!",
       error,
     });
+  }
+};
+
+export const adminGetAllReviews = async (req, res) => {
+  try {
+    const page = Math.max(Number(req.query.page || 1), 1);
+    const limit = Math.min(Math.max(req.query.limit || 10, 1), 100);
+    const skip = (page - 1) * limit;
+
+    const [reviews, totalReviews] = await Promise.all([
+      reviewModel
+        .find()
+        .populate("user", "name email")
+        .populate("product", "name")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+
+      reviewModel.countDocuments(),
+    ]);
+
+    const totalPages = Math.ceil(totalReviews / limit);
+
+    return res.status(200).send({
+      message: "Reviews fetched successfully!",
+      success: true,
+      data: {
+        reviews,
+        pagination: {
+          currentPage: page,
+          limit,
+          totalReviews,
+          totalPages,
+        },
+      },
+    });
+  } catch (error) {
+    console.log(error.message);
+    return res
+      .status(500)
+      .send({ message: "Something Went Wrong!", success: false, error });
   }
 };
