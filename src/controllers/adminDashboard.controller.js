@@ -2,6 +2,7 @@ import redis from "../config/redis/redis";
 import { userModel } from "../models/user.model.js";
 import { orderModel } from "../models/order.model.js";
 import { productModel } from "../models/product.model.js";
+import { inventoryModel } from "../models/inventory.model.js";
 import { reviewModel } from "../models/reviews.model.js";
 
 export const adminDashboard = async (req, res) => {
@@ -27,6 +28,7 @@ export const adminDashboard = async (req, res) => {
       cancelledOrders,
 
       revenueResult,
+      lowStockProducts
     ] = await Promise.all([
       orderModel
         .find({})
@@ -60,6 +62,24 @@ export const adminDashboard = async (req, res) => {
           },
         },
       ]),
+
+      inventoryModel.aggregate([
+        {
+          $match: {
+            $expr: {
+              $lte: [
+                {
+                  $subtract: ["$quantity", "$reservedQuantity"],
+                },
+                "$lowStockThreshold",
+              ],
+            },
+          },
+        },
+        {
+          $limit: 10,
+        },
+      ]),
     ]);
 
     const totalRevenue = revenueResult[0]?.totalRevenue || 0;
@@ -70,6 +90,7 @@ export const adminDashboard = async (req, res) => {
       },
       products: {
         total: totalProducts,
+        lowstock:lowStockProducts
       },
       ordes: {
         total: totalOrders,
