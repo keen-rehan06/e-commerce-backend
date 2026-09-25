@@ -2,7 +2,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import { configDotenv } from "dotenv";
 import { connectDb } from "./src/config/db/db.js";
-import redis from "./src/config/redis/redis.js";
+import {authRoute} from "./src/routes/auth.route.js"
 import { razorpayWebhooks } from "./src/controllers/payment.controller.js";
 
 configDotenv({path:".env"});
@@ -25,6 +25,7 @@ app.use(
     express.raw({type: "application/json"}),
     razorpayWebhooks
 )
+app.use("/",authRoute);
 
 app.get("/",(req,res)=>{
     res.send("Hello from E-commerce project.")
