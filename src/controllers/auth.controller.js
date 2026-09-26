@@ -1,13 +1,14 @@
 import redis from "../config/redis/redis.js";
 import { userModel } from "../models/user.model.js";
-import {roleModel} from "../models/role.model.js"
+import { roleModel } from "../models/role.model.js";
 import { verifyEmail } from "../services/emails/verifyEmail.email.js";
 import {
   generateAccessToken,
   generateRefreshToken,
   generateToken,
 } from "../config/tokens/tokens.config.js";
-import {v4 as uuid} from "uuid";
+import { v4 as uuid } from "uuid";
+import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 
@@ -25,19 +26,20 @@ export const createUser = async (req, res) => {
       return res.status(429).json({
         message: "Too many attempts",
       });
-    const { name, username, email, password } = req.body;
+    const { name, username, email, password, mobile } = req.body;
     const hashPassword = await bcrypt.hash(password, 10);
     const role = await roleModel.findOne({
-      name:"CUSTOMER"
-    })
+      name: "CUSTOMER",
+    });
     const createUser = await userModel.create({
       name,
       username,
       email,
+      mobile,
       password: hashPassword,
-      role:role._id
+      role: role._id,
     });
-    const token = generateToken(user);
+    const token = generateToken(createUser);
     verifyEmail(token, email);
     const newCreatedUser = await userModel
       .findById(createUser._id)
@@ -45,10 +47,14 @@ export const createUser = async (req, res) => {
     return res
       .status(201)
       .cookie("token", token)
-      .send({ message: "User Created SuccessFully!", success: false,data:newCreatedUser });
+      .send({
+        message: "User Created SuccessFully!",
+        success: false,
+        data: newCreatedUser,
+      });
   } catch (error) {
     console.log(error.message);
-    console.log(error)
+    console.log(error);
     return res.status(500).send({ message: "User Register Failed!", error });
   }
 };
@@ -67,7 +73,9 @@ export const verifyUser = async (req, res) => {
         .status(404)
         .send({ message: "User not found!", success: false });
     user.isVerified = true;
+    console.log("Before save:", user.isVerified);
     await user.save();
+    console.log("After save:", user.isVerified);
     return res
       .status(200)
       .clearCookie("token")
@@ -88,6 +96,12 @@ export const loginUser = async (req, res) => {
       return res
         .status(404)
         .send({ message: "Invalid Email or Password.", success: false });
+
+    const comparePassword = await bcrypt.compare(password, user.password);
+    if (!comparePassword)
+      return res
+        .status(401)
+        .send({ message: "Invalid Password", success: false });
     if (!user.isVerified)
       return res
         .status(401)
@@ -124,8 +138,8 @@ export const loginUser = async (req, res) => {
     const newUser = await userModel.findById(user._id).select("-password");
     return res
       .status(200)
-      .cookies("accessToken", accessToken)
-      .cookies("refreshToken", refreshToken)
+      .cookie("accessToken", accessToken)
+      .cookie("refreshToken", refreshToken)
       .send({
         message: "User loggedIn successFully!",
         success: true,
@@ -133,6 +147,7 @@ export const loginUser = async (req, res) => {
       });
   } catch (error) {
     console.log(error.message);
+    console.log(error);
     return res.status(500).send({ message: "Server Error", error });
   }
 };
@@ -302,11 +317,9 @@ export const changePassword = async (req, res) => {
         .status(401)
         .send({ message: "All fields are required!", success: false });
     if (password.length < 6 || password.length > 12)
-      return res
-        .status(401)
-        .send({
-          message: "Password must be minimum 6 characters or maximum 12.",
-        });
+      return res.status(401).send({
+        message: "Password must be minimum 6 characters or maximum 12.",
+      });
     if (password !== confirmPassword)
       return res
         .status(401)
@@ -331,56 +344,78 @@ export const changePassword = async (req, res) => {
   }
 };
 
-export const getProfile = async (req,res) => {
+export const getProfile = async (req, res) => {
   try {
     const userId = req.user.id;
     const cacheKey = `user-profile:${userId}`;
     const cachedData = await redis.get(cacheKey);
-    if(cachedData) return res.status(200).send({message:"User fetched from redis.",success:true,data:JSON.parse(cachedData)});
-    const user = await userModel.findById(userId).select("-password")
-    if(!user) return res.status(404).send({message:"User Not Found!",success:false});
-    await redis.set(cacheKey,JSON.stringify(user),"EX",300);
-    return res.status(200).send({message:"User Profile.",success:true,data:user});
+    if (cachedData)
+      return res
+        .status(200)
+        .send({
+          message: "User fetched from redis.",
+          success: true,
+          data: JSON.parse(cachedData),
+        });
+    const user = await userModel.findById(userId).select("-password");
+    if (!user)
+      return res
+        .status(404)
+        .send({ message: "User Not Found!", success: false });
+    await redis.set(cacheKey, JSON.stringify(user), "EX", 300);
+    return res
+      .status(200)
+      .send({ message: "User Profile.", success: true, data: user });
   } catch (error) {
     console.log(error.message);
-    return res.status(500).send({message:"Internal Server Error",success:false,error})
+    return res
+      .status(500)
+      .send({ message: "Internal Server Error", success: false, error });
   }
-}
+};
 
-export const updateProfile = async (req,res) => {
+export const updateProfile = async (req, res) => {
   try {
-    const {name,username,mobile,profileImage} = req.body;
+    const { name, username, mobile, profileImage } = req.body;
     const userId = req.user.id;
     const user = await userModel.findById(userId);
-    if(!user) return res.status(404).send({message:"User not found!",success:false});
+    if (!user)
+      return res
+        .status(404)
+        .send({ message: "User not found!", success: false });
     const cacheKey = `user-profile:${userId}`;
     const cachedData = await redis.del(cacheKey);
-    if(name !== undefined) user.name = name;
-    if(username !== undefined) {
-      const isAvalaible = await userModel.findOne({username});
-      if(isAvalaible) return res.status(401).send({message:"Username is not available!",success:false});
+    if (name !== undefined) user.name = name;
+    if (username !== undefined) {
+      const isAvalaible = await userModel.findOne({ username });
+      if (isAvalaible)
+        return res
+          .status(401)
+          .send({ message: "Username is not available!", success: false });
       user.username = username;
     }
-    if(mobile !== undefined) user.mobile = mobile;
-    if(profileImage !== undefined){
-      if(user.profileImage?.publicId){
+    if (mobile !== undefined) user.mobile = mobile;
+    if (profileImage !== undefined) {
+      if (user.profileImage?.publicId) {
         await cloudinary.uploader.destroy(user.profileImage.publicId);
       }
     }
     user.profileImage = {
       url: req.file.path,
-      public_id:uuid()
+      public_id: uuid(),
     };
-    await user.save(); 
+    await user.save();
     const updatedUser = await userModel.findById(userId).select("-password");
-    await redis.set(cacheKey,JSON.stringify(updatedUser),"EX",600);
-    res.status(200).json({ success: true, message: "Profile updated successfully", user, });
+    await redis.set(cacheKey, JSON.stringify(updatedUser), "EX", 600);
+    res
+      .status(200)
+      .json({ success: true, message: "Profile updated successfully", user });
   } catch (error) {
-     console.log(error.message)
+    console.log(error.message);
     return res.status(500).json({
       success: false,
       message: "Internal server error",
       error: error.message,
     });
   }
-}
+};

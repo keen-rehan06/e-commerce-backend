@@ -1,14 +1,15 @@
+import { configDotenv } from "dotenv";
+configDotenv({path:".env"});
+
 import express from "express";
 import cookieParser from "cookie-parser";
-import { configDotenv } from "dotenv";
 import { connectDb } from "./src/config/db/db.js";
 import { razorpayWebhooks } from "./src/controllers/payment.controller.js";
 
-// ***Routes*** //
-import authRoute from "./src/routes/auth.route.js"
+// Routes //
 import permissionRoute from "./src/routes/permission.route.js";
+import authRoute from "./src/routes/auth.route.js"
 
-configDotenv({path:".env"});
 
 ;(async()=>{
     try {
@@ -29,6 +30,7 @@ app.use(
     razorpayWebhooks
 )
 app.use("/",authRoute);
+app.use("/",permissionRoute);
 
 app.get("/",(req,res)=>{
     res.send("Hello from E-commerce project.")

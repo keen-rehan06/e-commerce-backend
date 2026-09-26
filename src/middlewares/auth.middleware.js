@@ -4,8 +4,8 @@ import jwt from "jsonwebtoken";
 
 export const checksUserRegister = async (req, res, next) => {
   try {
-    const { name, username, email, password } = req.body;
-    if (!name || !username || !email || !password)
+    const { name, username, email, password,mobile } = req.body;
+    if (!name || !username || !email || !password || !mobile)
       return res
         .status(401)
         .send({ message: "All Fileds are required!", success: false });
