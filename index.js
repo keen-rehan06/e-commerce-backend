@@ -2,8 +2,11 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import { configDotenv } from "dotenv";
 import { connectDb } from "./src/config/db/db.js";
-import {authRoute} from "./src/routes/auth.route.js"
 import { razorpayWebhooks } from "./src/controllers/payment.controller.js";
+
+// ***Routes*** //
+import authRoute from "./src/routes/auth.route.js"
+import permissionRoute from "./src/routes/permission.route.js";
 
 configDotenv({path:".env"});
 

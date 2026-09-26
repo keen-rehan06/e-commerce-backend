@@ -1,13 +1,13 @@
 import redis from "../config/redis/redis.js";
 import { userModel } from "../models/user.model.js";
 import {roleModel} from "../models/role.model.js"
-import { verifyEmail } from "../config/verifyEmail.config.js";
+import { verifyEmail } from "../services/emails/verifyEmail.email.js";
 import {
   generateAccessToken,
   generateRefreshToken,
   generateToken,
-} from "../config/tokens.config.js";
-import {v2 as uuid} from "uuid";
+} from "../config/tokens/tokens.config.js";
+import {v4 as uuid} from "uuid";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 
@@ -48,6 +48,7 @@ export const createUser = async (req, res) => {
       .send({ message: "User Created SuccessFully!", success: false,data:newCreatedUser });
   } catch (error) {
     console.log(error.message);
+    console.log(error)
     return res.status(500).send({ message: "User Register Failed!", error });
   }
 };
