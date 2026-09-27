@@ -201,19 +201,26 @@ export const refreshAccessToken = async (req, res) => {
     const redisRefreshToken = await redis.get(
       `refreshToken:${hashRefreshToken}`,
     );
-    if (hashRefreshToken !== redisRefreshToken)
+    console.log("decoded.id:", decoded.id);
+    console.log("decoded.id type:", typeof decoded.id);
+
+    console.log("redisRefreshToken:", redisRefreshToken);
+    console.log("redisRefreshToken type:", typeof redisRefreshToken);
+    if (!redisRefreshToken || redisRefreshToken !== decoded.id)
       return res
         .status(401)
         .send({ message: "Invalid refresh Token!", success: false });
     const accessToken = generateAccessToken(user);
     const newRefreshToken = generateRefreshToken(user);
+
     const newRefreshTokenHash = crypto
       .createHash("sha256")
       .update(newRefreshToken)
       .digest("hex");
+
     await redis.del(`refreshToken:${hashRefreshToken}`);
     await redis.set(
-      `refreshToken:${newRefreshToken}`,
+      `refreshToken:${newRefreshTokenHash}`,
       decoded.id,
       "EX",
       7 * 24 * 60 * 60,
