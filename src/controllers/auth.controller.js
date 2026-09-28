@@ -2,7 +2,7 @@ import redis from "../config/redis/redis.js";
 import { userModel } from "../models/user.model.js";
 import { roleModel } from "../models/role.model.js";
 import { verifyEmail } from "../services/emails/verifyEmail.email.js";
-import {sendOtpMail} from "../services/emails/sendOtpMail.js"
+import { sendOtpMail } from "../services/emails/sendOtpMail.js";
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -45,14 +45,11 @@ export const createUser = async (req, res) => {
     const newCreatedUser = await userModel
       .findById(createUser._id)
       .select("-password");
-    return res
-      .status(201)
-      .cookie("token", token)
-      .send({
-        message: "User Created SuccessFully!",
-        success: false,
-        data: newCreatedUser,
-      });
+    return res.status(201).cookie("token", token).send({
+      message: "User Created SuccessFully!",
+      success: false,
+      data: newCreatedUser,
+    });
   } catch (error) {
     console.log(error.message);
     console.log(error);
@@ -270,7 +267,7 @@ export const forgotPassword = async (req, res) => {
       `otp:${user._id}`,
       JSON.stringify({ userId: user._id, otp: otp }),
       "EX",
-      600
+      600,
     );
     sendOtpMail(otp, email, token);
     return res
@@ -279,7 +276,7 @@ export const forgotPassword = async (req, res) => {
       .send({ message: "Otp Send SuccessFully", success: true });
   } catch (error) {
     console.log(error.message);
-    console.log(error)
+    console.log(error);
     return res.status(500).send({
       message: error,
       success: false,
@@ -328,17 +325,20 @@ export const changePassword = async (req, res) => {
       return res.status(401).send({
         message: "Password must be minimum 6 characters or maximum 12.",
       });
-      if (password !== confirmPassword)
-        return res
-      .status(401)
-      .send({ message: "Password is not match", success: false });
-      const user = await userModel.findById(userId);
-      if (!user)
-        return res
-      .status(404)
-      .send({ message: "User Not Found!", success: false });
-      const comparePass = await bcrypt.compare(password,user.password);
-      if(comparePass) return res.status(400).send({message:"Old password should not be same",success:false})
+    if (password !== confirmPassword)
+      return res
+        .status(401)
+        .send({ message: "Password is not match", success: false });
+    const user = await userModel.findById(userId);
+    if (!user)
+      return res
+        .status(404)
+        .send({ message: "User Not Found!", success: false });
+    const comparePass = await bcrypt.compare(password, user.password);
+    if (comparePass)
+      return res
+        .status(400)
+        .send({ message: "Old password should not be same", success: false });
     const hashPassword = await bcrypt.hash(password, 10);
     user.password = hashPassword;
     await user.save();
@@ -348,7 +348,7 @@ export const changePassword = async (req, res) => {
       .send({ message: "Password Reset SuccessFully!", data: user });
   } catch (error) {
     console.log(error.message);
-    console.log(error)
+    console.log(error);
     return res
       .status(500)
       .send({ message: "Password Reseting Failed!", success: false, error });
@@ -361,13 +361,11 @@ export const getProfile = async (req, res) => {
     const cacheKey = `user-profile:${userId}`;
     const cachedData = await redis.get(cacheKey);
     if (cachedData)
-      return res
-        .status(200)
-        .send({
-          message: "User fetched from redis.",
-          success: true,
-          data: JSON.parse(cachedData),
-        });
+      return res.status(200).send({
+        message: "User fetched from redis.",
+        success: true,
+        data: JSON.parse(cachedData),
+      });
     const user = await userModel.findById(userId).select("-password");
     if (!user)
       return res
@@ -387,7 +385,7 @@ export const getProfile = async (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    const { name, username, mobile, profileImage } = req.body;
+    const { name, username, mobile } = req.body;
     const userId = req.user.id;
     const user = await userModel.findById(userId);
     if (!user)
@@ -395,18 +393,24 @@ export const updateProfile = async (req, res) => {
         .status(404)
         .send({ message: "User not found!", success: false });
     const cacheKey = `user-profile:${userId}`;
-    const cachedData = await redis.del(cacheKey);
     if (name !== undefined) user.name = name;
     if (username !== undefined) {
-      const isAvalaible = await userModel.findOne({ username });
-      if (isAvalaible)
-        return res
-          .status(401)
-          .send({ message: "Username is not available!", success: false });
+      const isAvailable = await userModel.findOne({
+        username,
+        _id: { $ne: userId },
+      });
+
+      if (isAvailable) {
+        return res.status(409).json({
+          message: "Username is not available!",
+          success: false,
+        });
+      }
+
       user.username = username;
     }
     if (mobile !== undefined) user.mobile = mobile;
-    if (profileImage !== undefined) {
+    if (req.file) {
       if (user.profileImage?.publicId) {
         await cloudinary.uploader.destroy(user.profileImage.publicId);
       }
@@ -415,6 +419,7 @@ export const updateProfile = async (req, res) => {
       url: req.file.path,
       public_id: uuid(),
     };
+    await redis.del(cacheKey);
     await user.save();
     const updatedUser = await userModel.findById(userId).select("-password");
     await redis.set(cacheKey, JSON.stringify(updatedUser), "EX", 600);

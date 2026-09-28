@@ -4,12 +4,10 @@ const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: true,
       trim: true,
     },
     username: {
       type: String,
-      required: true,
       unique: true,
       trim: true,
     },
@@ -26,7 +24,6 @@ const userSchema = new mongoose.Schema(
     },
     mobile: {
       type: String,
-      required: true,
       unique: true,
     },
     refreshToken: {
