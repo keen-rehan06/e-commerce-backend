@@ -1,5 +1,6 @@
 import handlebars from "handlebars";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 import nodemailer from "nodemailer";
 
@@ -12,7 +13,7 @@ export const sendOtpMail = async (otp, email, token) => {
     "utf-8",
   );
   const template = handlebars.compile(emailTemplateSource);
-  const htmlToSend = template({ token: encodeURIComponent(token) });
+  const htmlToSend = template({otp });
   const transport = nodemailer.createTransport({
     service:"gmail",
     auth:{

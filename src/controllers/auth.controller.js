@@ -2,6 +2,7 @@ import redis from "../config/redis/redis.js";
 import { userModel } from "../models/user.model.js";
 import { roleModel } from "../models/role.model.js";
 import { verifyEmail } from "../services/emails/verifyEmail.email.js";
+import {sendOtpMail} from "../services/emails/sendOtpMail.js"
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -264,13 +265,12 @@ export const forgotPassword = async (req, res) => {
         .status(404)
         .send({ message: "User Not Found!", success: false });
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
     const token = generateToken(user);
     await redis.set(
       `otp:${user._id}`,
       JSON.stringify({ userId: user._id, otp: otp }),
       "EX",
-      otpExpiry,
+      600
     );
     sendOtpMail(otp, email, token);
     return res
@@ -279,6 +279,7 @@ export const forgotPassword = async (req, res) => {
       .send({ message: "Otp Send SuccessFully", success: true });
   } catch (error) {
     console.log(error.message);
+    console.log(error)
     return res.status(500).send({
       message: error,
       success: false,
@@ -318,8 +319,8 @@ export const confirmOtp = async (req, res) => {
 export const changePassword = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { passsword, confirmPassword } = req.body;
-    if (!passsword || !confirmPassword)
+    const { password, confirmPassword } = req.body;
+    if (!password || !confirmPassword)
       return res
         .status(401)
         .send({ message: "All fields are required!", success: false });
@@ -327,24 +328,27 @@ export const changePassword = async (req, res) => {
       return res.status(401).send({
         message: "Password must be minimum 6 characters or maximum 12.",
       });
-    if (password !== confirmPassword)
-      return res
-        .status(401)
-        .send({ message: "Password is not match", success: false });
-    const user = await userModel.findById(userId);
-    if (!user)
-      return res
-        .status(404)
-        .send({ message: "User Not Found!", success: false });
-    const hashPassword = await bcrypt.hash(passsword, 10);
-    user.password = password;
+      if (password !== confirmPassword)
+        return res
+      .status(401)
+      .send({ message: "Password is not match", success: false });
+      const user = await userModel.findById(userId);
+      if (!user)
+        return res
+      .status(404)
+      .send({ message: "User Not Found!", success: false });
+      const comparePass = await bcrypt.compare(password,user.password);
+      if(comparePass) return res.status(400).send({message:"Old password should not be same",success:false})
+    const hashPassword = await bcrypt.hash(password, 10);
+    user.password = hashPassword;
     await user.save();
     return res
       .status(200)
       .clearCookie("token")
-      .send({ message: "Password Reset SuccessFully!", data: newUser });
+      .send({ message: "Password Reset SuccessFully!", data: user });
   } catch (error) {
     console.log(error.message);
+    console.log(error)
     return res
       .status(500)
       .send({ message: "Password Reseting Failed!", success: false, error });
