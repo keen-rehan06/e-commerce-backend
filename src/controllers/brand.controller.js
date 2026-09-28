@@ -1,7 +1,7 @@
 import { brandModel } from "../models/brand.model.js";
 import redis from "../config/redis/redis.js";
 import cloudinary from "../services/cloudinary/cloudinary.js";
-import { v2 as uuid } from "uuid";
+import { v4 as uuid } from "uuid";
 
 export const createBrand = async (req, res) => {
   try {
@@ -13,7 +13,7 @@ export const createBrand = async (req, res) => {
     const isBrandExist = await brandModel.findOne({
       $or: [{ name }, { slug }],
     });
-    if (isBrandExist)
+    if (isBrandExist) 
       return res
         .status(409)
         .send({ message: "Brand already exist!", success: false });

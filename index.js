@@ -9,7 +9,7 @@ import { razorpayWebhooks } from "./src/controllers/payment.controller.js";
 // Routes //
 import permissionRoute from "./src/routes/permission.route.js";
 import authRoute from "./src/routes/auth.route.js"
-
+import brandRoute from "./src/routes/brand.route.js"
 
 ;(async()=>{
     try {
@@ -32,6 +32,7 @@ app.use(
 )
 app.use("/",authRoute);
 app.use("/",permissionRoute);
+app.use("/",brandRoute)
 
 app.get("/",(req,res)=>{
     res.send("Hello from E-commerce project.")
