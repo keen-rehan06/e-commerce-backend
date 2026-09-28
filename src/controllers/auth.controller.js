@@ -393,7 +393,9 @@ export const updateProfile = async (req, res) => {
         .status(404)
         .send({ message: "User not found!", success: false });
     const cacheKey = `user-profile:${userId}`;
-    if (name !== undefined) user.name = name;
+    if (name !== undefined) {
+      user.name = name;
+    }
     if (username !== undefined) {
       const isAvailable = await userModel.findOne({
         username,
@@ -409,18 +411,20 @@ export const updateProfile = async (req, res) => {
 
       user.username = username;
     }
-    if (mobile !== undefined) user.mobile = mobile;
+    if (mobile !== undefined) {
+      user.mobile = mobile;
+    }
     if (req.file) {
       if (user.profileImage?.publicId) {
         await cloudinary.uploader.destroy(user.profileImage.publicId);
       }
+      user.profileImage = {
+        url: req.file.path,
+        public_id: uuid(),
+      };
     }
-    user.profileImage = {
-      url: req.file.path,
-      public_id: uuid(),
-    };
-    await redis.del(cacheKey);
     await user.save();
+    await redis.del(cacheKey);
     const updatedUser = await userModel.findById(userId).select("-password");
     await redis.set(cacheKey, JSON.stringify(updatedUser), "EX", 600);
     res
