@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 
 export const checksUserRegister = async (req, res, next) => {
   try {
-    const { name, username, email, password,mobile } = req.body;
+    const { name, username, email, password, mobile } = req.body;
     if (!name || !username || !email || !password || !mobile)
       return res
         .status(401)
@@ -65,7 +65,7 @@ export const checksLoginUser = async (req, res, next) => {
       return res
         .status(401)
         .send({ message: "All field must be string.", success: false });
-        const comparePassword = await bcrypt.compare(password,user.password);
+    const comparePassword = await bcrypt.compare(password, user.password);
     next();
   } catch (error) {
     console.log(error.message);
@@ -76,47 +76,73 @@ export const checksLoginUser = async (req, res, next) => {
 export const isLoggedIn = async (req, res, next) => {
   let token;
   const authHeader = req.headers.authorizarion;
-  if(req.cookies.accessToken){
+  if (req.cookies.accessToken) {
     token = req.cookies.accessToken;
-  }else if(authHeader && authHeader.startsWith("Bearer ")){
+  } else if (authHeader && authHeader.startsWith("Bearer ")) {
     token = authHeader.split(" ")[1];
   }
-  if(!token) return res.status(404).send({message:"Please! Login First.",success:false});
+  if (!token)
+    return res
+      .status(404)
+      .send({ message: "Please! Login First.", success: false });
   try {
-    const decoded = jwt.verify(token,process.env.ACCESS_TOKEN_SECRET);
-    if(!decoded) return res.status(401).send({message:"Invalid or Expired Token",success:false});
+    const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+    if (!decoded)
+      return res
+        .status(401)
+        .send({ message: "Invalid or Expired Token", success: false });
+    const user = await userModel.findById(decoded.id).populate("role");
+    req.user = user;
+    next();
+  } catch (error) {
+    console.log(error.message);
+    return res
+      .status(500)
+      .send({ message: "Internal Server Error", success: false, error });
+  }
+};
+
+export const changingPasswordToken = async (req, res, next) => {
+  const token = req.cookies.token;
+  if (!token)
+    return res
+      .status(401)
+      .send({ message: "Token is not found!", success: false });
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!decoded)
+      return res
+        .status(401)
+        .send({ message: "Invalid or Expired Token", success: false });
     req.user = decoded;
     next();
   } catch (error) {
     console.log(error.message);
-    return res.status(500).send({message:"Internal Server Error",success:false,error});
+    return res
+      .status(500)
+      .send({ message: "Internal Server Error", success: false, error });
   }
 };
 
-export const changingPasswordToken = async(req,res,next) => {
-  const token = req.cookies.token;
-   if(!token) return res.status(401).send({message:'Token is not found!',success:false});
-   try {
-    const decoded = jwt.verify(token,process.env.JWT_SECRET);
-    if(!decoded) return res.status(401).send({message:"Invalid or Expired Token",success:false});
-    req.user = decoded;
-    next()
-  } catch (error) {
-     console.log(error.message);
-    return res.status(500).send({message:"Internal Server Error",success:false,error});
-  }
-}
-
 export const authorize = (...roles) => {
-  return (req,res,next) => {
-    if(!roles.includes(req.user.role))return res.status(401).send({message:"Access Denied!",success:false});
-    next()
-  }
-}
+  return (req, res, next) => {
+    const userRoles = req.user.role.map((role) => role.name);
 
-export const authenticatedCheck = async(req,res,next) => {
-  if(req.isAuthenticated()){
+    const hasAccess = roles.some((role) => userRoles.includes(role));
+    if (!hasAccess) {
+      return res.status(403).send({
+        message: "Access Denied!",
+        success: false,
+      });
+    }
+
+    next();
+  };
+};
+
+export const authenticatedCheck = async (req, res, next) => {
+  if (req.isAuthenticated()) {
     return next();
   }
   return res.redirect("/");
-}
+};
