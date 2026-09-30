@@ -387,18 +387,27 @@ export const updateProfile = async (req, res) => {
   try {
     const { name, username, mobile } = req.body;
     const userId = req.user.id;
+
     const user = await userModel.findById(userId);
-    if (!user)
-      return res
-        .status(404)
-        .send({ message: "User not found!", success: false });
-    const cacheKey = `user-profile:${userId}`;
-    if (name !== undefined) {
-      user.name = name;
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found!",
+        success: false,
+      });
     }
-    if (username !== undefined) {
+
+    const cacheKey = `user-profile:${userId}`;
+
+    // Update name only if a non-empty value is provided
+    if (name?.trim()) {
+      user.name = name.trim();
+    }
+
+    // Update username only if a non-empty value is provided
+    if (username?.trim()) {
       const isAvailable = await userModel.findOne({
-        username,
+        username: username.trim(),
         _id: { $ne: userId },
       });
 
@@ -409,29 +418,52 @@ export const updateProfile = async (req, res) => {
         });
       }
 
-      user.username = username;
+      user.username = username.trim();
     }
-    if (mobile !== undefined) {
-      user.mobile = mobile;
+
+    // Update mobile only if a non-empty value is provided
+    if (mobile?.trim()) {
+      user.mobile = mobile.trim();
     }
+
+    // Update profile image
     if (req.file) {
       if (user.profileImage?.publicId) {
         await cloudinary.uploader.destroy(user.profileImage.publicId);
       }
+
       user.profileImage = {
         url: req.file.path,
-        public_id: uuid(),
+        publicId: uuid(),
       };
     }
+
     await user.save();
+
+    // Invalidate cache
     await redis.del(cacheKey);
-    const updatedUser = await userModel.findById(userId).select("-password");
-    await redis.set(cacheKey, JSON.stringify(updatedUser), "EX", 600);
-    res
-      .status(200)
-      .json({ success: true, message: "Profile updated successfully", user });
+
+    // Get updated user without password
+    const updatedUser = await userModel
+      .findById(userId)
+      .select("-password");
+
+    // Store updated user in cache
+    await redis.set(
+      cacheKey,
+      JSON.stringify(updatedUser),
+      "EX",
+      600
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      user: updatedUser,
+    });
   } catch (error) {
     console.log(error.message);
+
     return res.status(500).json({
       success: false,
       message: "Internal server error",

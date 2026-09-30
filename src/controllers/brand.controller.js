@@ -5,31 +5,45 @@ import { v4 as uuid } from "uuid";
 
 export const createBrand = async (req, res) => {
   try {
-    const { name, slug, description, logo } = req.body;
-    if (!name || !slug)
-      return res
-        .status(401)
-        .send({ message: "name and slug is required!", success: false });
+    const { name, slug, description } = req.body;
+
+    if (!name || !slug) {
+      return res.status(400).json({
+        message: "Name and slug are required!",
+        success: false,
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        message: "Brand logo is required!",
+        success: false,
+      });
+    }
+
     const isBrandExist = await brandModel.findOne({
       $or: [{ name }, { slug }],
     });
-    if (isBrandExist) 
-      return res
-        .status(409)
-        .send({ message: "Brand already exist!", success: false });
-    let brandLogo;
-    if (req.file) {
-      brandLogo = {
-        url: req.file.path,
-        publicId: uuid(),
-      };
+
+    if (isBrandExist) {
+      return res.status(409).json({
+        message: "Brand already exists!",
+        success: false,
+      });
     }
+
+    const brandLogo = {
+      url: req.file.path,
+      publicId: uuid(),
+    };
+
     const brand = await brandModel.create({
       name,
       slug,
       description,
       logo: brandLogo,
     });
+
     return res.status(201).json({
       success: true,
       message: "Brand created successfully",
@@ -37,6 +51,7 @@ export const createBrand = async (req, res) => {
     });
   } catch (error) {
     console.log(error.message);
+
     return res.status(500).json({
       success: false,
       message: error.message,
@@ -115,28 +130,24 @@ export const getSingleBrand = async (req, res) => {
     const cacheKey = `brand:${brandId}`;
     const cacheData = await redis.get(cacheKey);
     if (cacheData)
-      return res
-        .status(200)
-        .send({
-          message: "Data fetched",
-          source: "redis",
-          success: true,
-          data: JSON.parse(cacheData),
-        });
+      return res.status(200).send({
+        message: "Data fetched",
+        source: "redis",
+        success: true,
+        data: JSON.parse(cacheData),
+      });
     const brand = await brandModel.findById(brandId);
     if (!brand)
       return res
         .status(404)
         .send({ message: "Brand not found!", success: false });
     await redis.set(cacheKey, JSON.stringify(brand), "EX", 300);
-    return res
-      .status(200)
-      .send({
-        message: "Data fetched.",
-        success: true,
-        source: "database",
-        data: brand,
-      });
+    return res.status(200).send({
+      message: "Data fetched.",
+      success: true,
+      source: "database",
+      data: brand,
+    });
   } catch (error) {
     console.log(error.message);
     return res.status(500).json({
@@ -146,24 +157,33 @@ export const getSingleBrand = async (req, res) => {
   }
 };
 
-export const updateSingleBrand = async (req,res) => {
+export const updateSingleBrand = async (req, res) => {
   try {
     const brandId = req.params.id;
-    const {name,slug,description} = req.body;
-    const brand =  await brandModel.findById(brandId);
-    if(!brand) return res.status(404).send({message:"Brand not found!",success:false});
-    const checkBrand = await brandModel.findOne({$or:[{name},{slug}]});
-    if(checkBrand) return res.status(409).send({message:"Brand already Exist! using name and slug!",success:false});
+    const { name, slug, description } = req.body;
+    const brand = await brandModel.findById(brandId);
+    if (!brand)
+      return res
+        .status(404)
+        .send({ message: "Brand not found!", success: false });
+    const checkBrand = await brandModel.findOne({ $or: [{ name }, { slug }] });
+    if (checkBrand)
+      return res
+        .status(409)
+        .send({
+          message: "Brand already Exist! using name and slug!",
+          success: false,
+        });
     brand.name = name ?? brand.name;
     brand.slug = slug ?? brand.slug;
     brand.description = description ?? brand.description;
-    if(req.file){
-        await cloudinary.uploader.destroy(brand.logo.publicId); 
+    if (req.file) {
+      await cloudinary.uploader.destroy(brand.logo.publicId);
     }
-     let brandLogo = {
-      url:req.file.path,
-      publicId:uuid()
-    }
+    let brandLogo = {
+      url: req.file.path,
+      publicId: uuid(),
+    };
     brand.logo = brandLogo ?? brand.logo;
     await brand.save();
     await redis.del(`brand:${brandId}`);
@@ -179,20 +199,25 @@ export const updateSingleBrand = async (req,res) => {
       message: error.message,
     });
   }
-}
+};
 
-export const deleteSingleBrand = async (req,res) => {
+export const deleteSingleBrand = async (req, res) => {
   try {
-    const brandId = req.params.id; 
+    const brandId = req.params.id;
     const brand = await brandModel.findByIdAndDelete(brandId);
-    if(!brand) return res.status(404).send({message:"brand not found!",success:false});
+    if (!brand)
+      return res
+        .status(404)
+        .send({ message: "brand not found!", success: false });
     await redis.del(`brand:${brandId}`);
-    return res.status(200).send({message:"Brand deleted successFully!",success:true});
+    return res
+      .status(200)
+      .send({ message: "Brand deleted successFully!", success: true });
   } catch (error) {
     console.log(error.message);
-     return res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: error.message,
     });
   }
-}
+};
