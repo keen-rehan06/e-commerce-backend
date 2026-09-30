@@ -84,22 +84,29 @@ export const getAllBrand = async (req, res) => {
         $options: "i",
       };
     }
+    if (isActive !== undefined) {
+      filter.isActive = isActive === "true";
+    }
     // Redis cache key
-    const cacheKey = `brands:${search}:${isActive}:${pageNumber}:${limitNumber}:${sort}`;
-    const cacheData = await redis.get(cacheKey);
-    if (cacheData)
-      return res.status(200).send({
-        message: "Data fetched from redis.",
-        source: "redis",
-        success: true,
-        data: JSON.parse(cacheData),
-      });
+    // const cacheKey = `brands:${search}:${isActive}:${pageNumber}:${limitNumber}:${sort}`;
+    // const cacheData = await redis.get(cacheKey);
+    // if (cacheData)
+    //   return res.status(200).send({
+    //     message: "Data fetched from redis.",
+    //     source: "redis",
+    //     success: true,
+    //     data: JSON.parse(cacheData),
+    //   });
     const brands = await brandModel
       .find(filter)
       .sort(sort)
       .skip(skip)
       .limit(limitNumber);
 
+    if (!brands || brands.length === 0)
+      return res
+        .status(404)
+        .send({ message: "Brand not found", success: false });
     // Total brands
     const totalBrands = await brandModel.countDocuments(filter);
     const result = {
@@ -112,7 +119,7 @@ export const getAllBrand = async (req, res) => {
       },
     };
 
-    await redis.set(cacheKey, JSON.stringify(result), "EX", 300);
+    // await redis.set(cacheKey, JSON.stringify(result ), "EX", 300);
     return res
       .status(200)
       .send({ success: true, source: "database", data: result });
@@ -168,12 +175,10 @@ export const updateSingleBrand = async (req, res) => {
         .send({ message: "Brand not found!", success: false });
     const checkBrand = await brandModel.findOne({ $or: [{ name }, { slug }] });
     if (checkBrand)
-      return res
-        .status(409)
-        .send({
-          message: "Brand already Exist! using name and slug!",
-          success: false,
-        });
+      return res.status(409).send({
+        message: "Brand already Exist! using name and slug!",
+        success: false,
+      });
     brand.name = name ?? brand.name;
     brand.slug = slug ?? brand.slug;
     brand.description = description ?? brand.description;
