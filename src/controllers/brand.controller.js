@@ -88,15 +88,15 @@ export const getAllBrand = async (req, res) => {
       filter.isActive = isActive === "true";
     }
     // Redis cache key
-    // const cacheKey = `brands:${search}:${isActive}:${pageNumber}:${limitNumber}:${sort}`;
-    // const cacheData = await redis.get(cacheKey);
-    // if (cacheData)
-    //   return res.status(200).send({
-    //     message: "Data fetched from redis.",
-    //     source: "redis",
-    //     success: true,
-    //     data: JSON.parse(cacheData),
-    //   });
+    const cacheKey = `brands:${search}:${isActive}:${pageNumber}:${limitNumber}:${sort}`;
+    const cacheData = await redis.get(cacheKey);
+    if (cacheData)
+      return res.status(200).send({
+        message: "Data fetched from redis.",
+        source: "redis",
+        success: true,
+        data: JSON.parse(cacheData),
+      });
     const brands = await brandModel
       .find(filter)
       .sort(sort)
@@ -119,7 +119,7 @@ export const getAllBrand = async (req, res) => {
       },
     };
 
-    // await redis.set(cacheKey, JSON.stringify(result ), "EX", 300);
+    await redis.set(cacheKey, JSON.stringify(result ), "EX", 300);
     return res
       .status(200)
       .send({ success: true, source: "database", data: result });
