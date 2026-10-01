@@ -179,9 +179,17 @@ export const updateSingleBrand = async (req, res) => {
         message: "Brand already Exist! using name and slug!",
         success: false,
       });
-    brand.name = name ?? brand.name;
-    brand.slug = slug ?? brand.slug;
-    brand.description = description ?? brand.description;
+      if(name?.trim()) {
+        brand.name = name.trim();
+      }
+      if(slug?.trim()) {
+        const checkSlug = await brandModel.findOne({slug});
+        if(checkSlug) return res.status(401).send({message:"Slug is not available!",success:false});
+        brand.slug = slug.trim(); 
+      }
+      if(description?.trim()){
+        brand.description = description.trim();
+      } 
     if (req.file) {
       await cloudinary.uploader.destroy(brand.logo.publicId);
     }
