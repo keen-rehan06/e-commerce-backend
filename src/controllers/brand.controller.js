@@ -191,13 +191,14 @@ export const updateSingleBrand = async (req, res) => {
         brand.description = description.trim();
       } 
     if (req.file) {
+      if(brand.logo?.publicId) {
       await cloudinary.uploader.destroy(brand.logo.publicId);
+      }
+      brand.logo = {
+        url: req.file.path,
+        publicId: uuid(),
+      };
     }
-    let brandLogo = {
-      url: req.file.path,
-      publicId: uuid(),
-    };
-    brand.logo = brandLogo ?? brand.logo;
     await brand.save();
     await redis.del(`brand:${brandId}`);
     return res.status(200).json({

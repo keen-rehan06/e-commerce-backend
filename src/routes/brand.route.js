@@ -13,7 +13,7 @@ const app = express();
 app.post("/api/create-brand",isLoggedIn,authorize("SUPER_ADMIN","ADMIN"),brandLogoUpload.single("logo"),createBrand);
 app.get("/api/brands",getAllBrand);
 app.get("/api/brand/:id",getSingleBrand);
-app.patch("/api/update-brand/:id",isLoggedIn,authorize("SUPER_ADMIN","ADMIN"),updateSingleBrand);
+app.patch("/api/update-brand/:id",isLoggedIn,authorize("SUPER_ADMIN","ADMIN"),brandLogoUpload.single("logo"),updateSingleBrand);
 app.delete("/api/delete-brand/:id",isLoggedIn,authorize("SUPER_ADMIN","ADMIN"),deleteSingleBrand);
 
 export default app;
