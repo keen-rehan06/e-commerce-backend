@@ -8,8 +8,8 @@ import cloudinary from "../services/cloudinary/cloudinary.js";
 
 export const createProduct = async (req, res) => {
   try {
-    const { name, slug, description, brand, category } = req.body;
-    if (!name || !slug || !description || !brand || !category)
+    const { name, slug, description, brand, category, images } = req.body;
+    if (!name || !slug || !description || !brand || !category || !images)
       return res
         .status(401)
         .send({ message: "All fields are required!", success: false });
@@ -27,16 +27,18 @@ export const createProduct = async (req, res) => {
       return res
         .status(404)
         .send({ message: "Category not Found!", success: false });
-    const images = req.files.map((file) => ({
-      url: req.file.path,
-      publicId: uuid(),
-      alterText: `${name} Product Image.`,
-    }));
+
+    let image = req.files.map((file) => ({
+        url: req.file.path,
+        publicId: uuid(),
+        alterText: `${name} Product Image.`,
+      }));
+      
     const product = await productModel.create({
       name,
       slug,
       description,
-      images,
+      image,
       brand: existingBrand._id,
       category: existingCategory._id,
     });

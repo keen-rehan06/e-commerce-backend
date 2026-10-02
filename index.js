@@ -10,6 +10,7 @@ import { razorpayWebhooks } from "./src/controllers/payment.controller.js";
 import permissionRoute from "./src/routes/permission.route.js";
 import authRoute from "./src/routes/auth.route.js"
 import brandRoute from "./src/routes/brand.route.js"
+import productRoute from "./src/routes/product.route.js";
 
 ;(async()=>{
     try {
