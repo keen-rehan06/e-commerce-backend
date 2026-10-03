@@ -143,7 +143,7 @@ export const deleteCategory = async (req, res) => {
       return res
         .status(404)
         .send({ message: "category not found!", success: false });
-    await categoryModel.deleteOne(categoryId);
+    await categoryModel.findByIdAndDelete(categoryId);
     await redis.del(`categories:${categoryId}`);
     await redis.del(`categories:all`);
     return res
