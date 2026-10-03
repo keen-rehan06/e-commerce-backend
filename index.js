@@ -7,9 +7,10 @@ import { connectDb } from "./src/config/db/db.js";
 import { razorpayWebhooks } from "./src/controllers/payment.controller.js";
 
 // Routes //
-import permissionRoute from "./src/routes/permission.route.js";
 import authRoute from "./src/routes/auth.route.js"
 import brandRoute from "./src/routes/brand.route.js"
+import categoryRoute from "./src/routes/categories.route.js";
+import permissionRoute from "./src/routes/permission.route.js";
 import productRoute from "./src/routes/product.route.js";
 
 ;(async()=>{
@@ -33,7 +34,9 @@ app.use(
 )
 app.use("/",authRoute);
 app.use("/",permissionRoute);
-app.use("/",brandRoute)
+app.use("/",brandRoute);
+app.use("/",productRoute);
+app.use("/",categoryRoute);
 
 app.get("/",(req,res)=>{
     res.send("Hello from E-commerce project.")

@@ -157,8 +157,3 @@ export const deleteCategory = async (req, res) => {
   }
 };
 
-
-
-
-
-https://github.com/keen-rehan06/e-commerce-backend

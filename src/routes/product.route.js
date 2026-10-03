@@ -1,6 +1,7 @@
 import express from "express";
-import { isLoggedIn } from "../middlewares/auth.middleware.js";
+import { authorize, isLoggedIn } from "../middlewares/auth.middleware.js";
 import { createProduct } from "../controllers/product.controller.js";
+import {productsImageupload} from "../services/multer/productImage.multer.js"
 
 const app = express.Router();
 

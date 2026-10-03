@@ -6,7 +6,7 @@ export const createInventory = async (req, res) => {
   try {
     const variant = req.params.id;
     const { quantity, reservedQuantity, lowStockThreshold, allowBackorder } =
-      req.body;
+      req.body; 
     const existingVariant = await variantModel.findById(variant);
     if (!existingVariant)
       return res
