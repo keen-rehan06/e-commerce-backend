@@ -86,7 +86,7 @@ export const getSingleCategory = async (req, res) => {
         .status(401)
         .send({ message: "No Category found!", success: false });
     await redis.set(cacheKey, JSON.stringify(category), "EX", 600);
-    return res.status(200).send({ data: category, success: true });
+    return res.status(200).send({ data: category, success: true,source:"db" });
   } catch (error) {
     console.log(error.message);
     return res
