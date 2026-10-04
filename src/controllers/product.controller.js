@@ -75,64 +75,158 @@ export const getAllProducts = async (req, res) => {
       limit = 10,
       sort = "newest",
     } = req.query;
+
+    // Validate pagination
+    const pageNumber = Math.max(parseInt(page, 10) || 1, 1);
+    const limitNumber = Math.min(
+      Math.max(parseInt(limit, 10) || 10, 1),
+      100
+    );
+
+    // Allowed sorting
+    const allowedSorts = {
+      newest: { createdAt: -1 },
+      oldest: { createdAt: 1 },
+      name_asc: { name: 1 },
+      name_desc: { name: -1 },
+    };
+
+     // Redis cache key
     const cacheKey = `products:${JSON.stringify({
-      search,
-      brand,
-      category,
-      page,
-      limit,
+      search: search?.trim() || "",
+      brand: brand?.trim() || "",
+      category: category?.trim() || "",
+      page: pageNumber,
+      limit: limitNumber,
       sort,
     })}`;
-    const cachedProducts = await redis.get(cacheKey);
-    if (cachedProducts)
-      return res.status(200).send({
-        message: "Products fetched from cache",
+
+     const cachedProducts = await redis.get(cacheKey);
+
+    if (cachedProducts) {
+      return res.status(200).json({
         success: true,
-        products: JSON.parse(cachedProducts),
+        message: "Products fetched from cache",
+        result: JSON.parse(cachedProducts),
       });
-    // filter object
+    }
+
+    const sortOption = allowedSorts[sort] || allowedSorts.newest;
+
+    // Escape regex special characters
+    const escapeRegex = (value) => {
+      return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    };
+
+    // Filter object
     const filter = {};
-    //search by product name
+
+    // Search by product name
     if (search) {
       filter.name = {
-        $regex: search,
+        $regex: escapeRegex(search.trim()),
         $options: "i",
       };
     }
-    // Filter by brand
-    if (brand) filter.brand = brand;
-    // Filter by category
-    if (category) filter.category = category;
+
+    // Filter by brand name OR slug
+    if (brand) {
+      const brandRegex = escapeRegex(brand.trim());
+
+      const brandData = await brandModel
+        .find({
+          $or: [
+            { name: { $regex: brandRegex, $options: "i" } },
+            { slug: { $regex: brandRegex, $options: "i" } },
+          ],
+        })
+        .select("_id")
+        .lean();
+
+      // Brand not found
+      if (brandData.length === 0) {
+        return res.status(200).json({
+          success: true,
+          message: "No products found",
+          result: {
+            products: [],
+            pagination: {
+              currentPage: pageNumber,
+              limit: limitNumber,
+              totalProducts: 0,
+              totalPages: 0,
+              nextPage: false,
+              previousPage: false,
+            },
+          },
+        });
+      }
+
+      filter.brand = {
+        $in: brandData.map((item) => item._id),
+      };
+    }
+
+    // Filter by category name OR slug
+    if (category) {
+      const categoryRegex = escapeRegex(category.trim());
+
+      const categoryData = await categoryModel
+        .find({
+          $or: [
+            { name: { $regex: categoryRegex, $options: "i" } },
+            { slug: { $regex: categoryRegex, $options: "i" } },
+          ],
+        })
+        .select("_id")
+        .lean();
+
+      // Category not found
+      if (categoryData.length === 0) {
+        return res.status(200).json({
+          success: true,
+          message: "No products found",
+          result: {
+            products: [],
+            pagination: {
+              currentPage: pageNumber,
+              limit: limitNumber,
+              totalProducts: 0,
+              totalPages: 0,
+              nextPage: false,
+              previousPage: false,
+            },
+          },
+        });
+      }
+
+      filter.category = {
+        $in: categoryData.map((item) => item._id),
+      };
+    }
 
     // Pagination
-    const pageNumber = Math.max(Number(page), 1);
-    const limitNumber = Math.min(Math.max(Number(limit), 1), 100);
     const skip = (pageNumber - 1) * limitNumber;
 
-    // sorting
-    let sortOption = { createdAt: -1 };
-    if (sort === "oldest") {
-      sortOption = { createdAt: 1 };
-    }
-    if (sort === "name_asc") {
-      sortOption = { name: 1 };
-    }
+    // Check Redis cache   
 
-    if (sort === "name_desc") {
-      sortOption = { name: -1 };
-    }
-    // 6. Get products + total count
+    // Get products + total count
     const [products, totalProducts] = await Promise.all([
       productModel
         .find(filter)
-        .populate("brand", "name")
-        .populate("category", "name")
+        .populate("brand", "name slug")
+        .populate("category", "name slug")
         .sort(sortOption)
         .skip(skip)
-        .limit(limitNumber),
+        .limit(limitNumber)
+        .lean(),
+
       productModel.countDocuments(filter),
     ]);
+
+    // Pagination details
     const totalPages = Math.ceil(totalProducts / limitNumber);
+
     const result = {
       products,
       pagination: {
@@ -144,10 +238,16 @@ export const getAllProducts = async (req, res) => {
         previousPage: pageNumber > 1,
       },
     };
-    // 8. Save in Redis
-    await redis.set(cacheKey, JSON.stringify(result), "EX", 300);
 
-    // 9. Response
+    // Save result in Redis for 5 minutes
+    await redis.set(
+      cacheKey,
+      JSON.stringify(result),
+      "EX",
+      300
+    );
+
+    // Response
     return res.status(200).json({
       success: true,
       message: "Products fetched successfully",
@@ -177,7 +277,7 @@ export const getSingleProduct = async (req, res) => {
     if (cachedProduct)
       return res.status(200).send({
         message: "Product fetch from redis cache.",
-        cachedProduct,
+        ...JSON.parse(cachedProduct),
         success: true,
       });
     const product = await productModel
