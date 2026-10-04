@@ -8,8 +8,8 @@ import cloudinary from "../services/cloudinary/cloudinary.js";
 
 export const createProduct = async (req, res) => {
   try {
-    const { name, slug, description, brand, category, images } = req.body;
-    if (!name || !slug || !description || !brand || !category || !images)
+    const { name, slug, description, brand, category } = req.body;
+    if (!name || !slug || !description || !brand || !category || !req.file)
       return res
         .status(401)
         .send({ message: "All fields are required!", success: false });
@@ -19,26 +19,35 @@ export const createProduct = async (req, res) => {
         message: "Product with this slug already exists",
         success: false,
       });
-    const existingBrand = await brandModel.findOne({ brand });
+    const existingBrand = await brandModel.findOne({
+       $or: [
+        { name: { $regex: brand, $options: "i" } },
+        { slug: { $regex: brand, $options: "i" } },
+      ],
+    });
     if (!existingBrand)
-      return res.status(404).send({ message: "Brand not foud" });
-    const existingCategory = await categoryModel.findOne({ category });
+      return res.status(404).send({ message: "Brand not found" });
+    const existingCategory = await categoryModel.findOne({
+      $or: [
+        { name: { $regex: category, $options: "i" } },
+        { slug: { $regex: category, $options: "i" } },
+      ],
+    });
     if (!existingCategory)
       return res
         .status(404)
         .send({ message: "Category not Found!", success: false });
 
-    let image = req.files.map((file) => ({
-        url: req.file.path,
-        publicId: uuid(),
-        alterText: `${name} Product Image.`,
-      }));
-      
+    let image = {
+      url: req.file.path,
+      publicId: uuid(),
+      alterText: `${name} Product Image.`,
+    };
     const product = await productModel.create({
       name,
       slug,
       description,
-      image,
+      images: image,
       brand: existingBrand._id,
       category: existingCategory._id,
     });

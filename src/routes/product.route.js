@@ -5,6 +5,6 @@ import {productsImageupload} from "../services/multer/productImage.multer.js"
 
 const app = express.Router();
 
-app.post("/api/create-product",isLoggedIn,authorize("SUPER_ADMIN","ADMIN","SELLER"),productsImageupload.single("image"),createProduct);
+app.post("/api/create-product",isLoggedIn,authorize("SUPER_ADMIN","ADMIN","SELLER"),productsImageupload.single("images"),createProduct);
 
 export default app;
