@@ -2,7 +2,7 @@ import { productModel } from "../models/product.model.js";
 import { categoryModel } from "../models/category.model.js";
 import { brandModel } from "../models/brand.model.js";
 import redis from "../config/redis/redis.js";
-import mongoose from "mongoose";
+import mongoose, { createConnection } from "mongoose";
 import { v4 as uuid } from "uuid";
 import cloudinary from "../services/cloudinary/cloudinary.js";
 
@@ -20,7 +20,7 @@ export const createProduct = async (req, res) => {
         success: false,
       });
     const existingBrand = await brandModel.findOne({
-       $or: [
+      $or: [
         { name: { $regex: brand, $options: "i" } },
         { slug: { $regex: brand, $options: "i" } },
       ],
@@ -78,10 +78,7 @@ export const getAllProducts = async (req, res) => {
 
     // Validate pagination
     const pageNumber = Math.max(parseInt(page, 10) || 1, 1);
-    const limitNumber = Math.min(
-      Math.max(parseInt(limit, 10) || 10, 1),
-      100
-    );
+    const limitNumber = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100);
 
     // Allowed sorting
     const allowedSorts = {
@@ -91,7 +88,7 @@ export const getAllProducts = async (req, res) => {
       name_desc: { name: -1 },
     };
 
-     // Redis cache key
+    // Redis cache key
     const cacheKey = `products:${JSON.stringify({
       search: search?.trim() || "",
       brand: brand?.trim() || "",
@@ -101,7 +98,7 @@ export const getAllProducts = async (req, res) => {
       sort,
     })}`;
 
-     const cachedProducts = await redis.get(cacheKey);
+    const cachedProducts = await redis.get(cacheKey);
 
     if (cachedProducts) {
       return res.status(200).json({
@@ -208,7 +205,7 @@ export const getAllProducts = async (req, res) => {
     // Pagination
     const skip = (pageNumber - 1) * limitNumber;
 
-    // Check Redis cache   
+    // Check Redis cache
 
     // Get products + total count
     const [products, totalProducts] = await Promise.all([
@@ -240,12 +237,7 @@ export const getAllProducts = async (req, res) => {
     };
 
     // Save result in Redis for 5 minutes
-    await redis.set(
-      cacheKey,
-      JSON.stringify(result),
-      "EX",
-      300
-    );
+    await redis.set(cacheKey, JSON.stringify(result), "EX", 300);
 
     // Response
     return res.status(200).json({
@@ -315,28 +307,59 @@ export const updateSingleProduct = async (req, res) => {
       return res
         .status(404)
         .send({ message: "Product not found!", success: false });
-    const allowedFields = [
-      "name",
-      "slug",
-      "description",
-      "shortDescription",
-      "brand",
-      "category",
-      "tags",
-      "status",
-      "isFeatured",
-    ];
-    const update = {};
-    for (const field of allowedFields) {
-      if (req.body[field] !== undefined) {
-        update[field] = req.body[field];
-      }
-    }
-    if (Object.keys(update).length === 0)
-      return res
-        .status(400)
-        .json({ success: false, message: "No fields provided for update" });
 
+    const {
+      name,
+      slug,
+      description,
+      shortDescription,
+      brand,
+      category,
+      tags,
+      status,
+      isFeatured,   
+    } = req.body;
+      if(name?.trim()) {
+        product.name = name;
+      }
+      if(slug?.trim()) {
+        product.slug = slug;
+      }
+      if(description?.trim()) {
+        product.description = description;
+      }
+      if(shortDescription?.trim()) {
+        product.shortDescription = shortDescription;
+      }
+      if(tags?.trim) { 
+        product.tags = tags;
+      }
+      if(status?.trim()) {
+        product.status = status;
+      }
+      if(isFeatured?.trim()) {
+        product.isFeatured = isFeatured;
+      }
+      if(brand?.trim()) {
+        const brandData = await brandModel.findOne({
+          $or:[
+            {name:{$regex:brand,$options:"i"}},
+            {slug:{$regex:brand,$options:"i"}},
+          ]
+        });
+        if(!brandData) return res.status(404).send({message:"Brand Not found!",success:false});
+        product.brand = brandData._id;
+      }
+      if (category?.trim()) {
+        const categoryData = await categoryModel.findOne({
+          $or:[
+            {name:{$regex:category,$options:"i"}},
+            {slug:{$regex:category,$options:"i"}},
+          ]
+        });
+        if(!categoryData) return res.status(404).send({message:"category not found!",success:false});
+        product.category = categoryData._id;
+      }
     if (req.file) {
       const oldPublicId = product.images?.publicId;
       if (oldPublicId) {
@@ -351,16 +374,11 @@ export const updateSingleProduct = async (req, res) => {
     const cacheKey = `product:${productId}`;
     await redis.del(cacheKey);
 
-    const updateProduct = await productModel.findByIdAndUpdate(
-      productId,
-      update,
-      { new: true },
-    );
-    await redis.set(cacheKey, JSON.stringify(updateProduct), "EX", 300);
+    await redis.set(cacheKey, JSON.stringify(product), "EX", 300);
     return res.status(200).json({
       success: true,
       message: "Product updated successfully",
-      product: updateProduct,
+      product,
     });
   } catch (error) {
     console.log(error.message);
