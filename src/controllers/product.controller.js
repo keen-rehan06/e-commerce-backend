@@ -317,49 +317,55 @@ export const updateSingleProduct = async (req, res) => {
       category,
       tags,
       status,
-      isFeatured,   
+      isFeatured,
     } = req.body;
-      if(name?.trim()) {
-        product.name = name;
-      }
-      if(slug?.trim()) {
-        product.slug = slug;
-      }
-      if(description?.trim()) {
-        product.description = description;
-      }
-      if(shortDescription?.trim()) {
-        product.shortDescription = shortDescription;
-      }
-      if(tags?.trim) { 
-        product.tags = tags;
-      }
-      if(status?.trim()) {
-        product.status = status;
-      }
-      if(isFeatured?.trim()) {
-        product.isFeatured = isFeatured;
-      }
-      if(brand?.trim()) {
-        const brandData = await brandModel.findOne({
-          $or:[
-            {name:{$regex:brand,$options:"i"}},
-            {slug:{$regex:brand,$options:"i"}},
-          ]
-        });
-        if(!brandData) return res.status(404).send({message:"Brand Not found!",success:false});
-        product.brand = brandData._id;
-      }
-      if (category?.trim()) {
-        const categoryData = await categoryModel.findOne({
-          $or:[
-            {name:{$regex:category,$options:"i"}},
-            {slug:{$regex:category,$options:"i"}},
-          ]
-        });
-        if(!categoryData) return res.status(404).send({message:"category not found!",success:false});
-        product.category = categoryData._id;
-      }
+    if (name?.trim()) {
+      product.name = name;
+    }
+    if (slug?.trim()) {
+      product.slug = slug;
+    }
+    if (description?.trim()) {
+      product.description = description;
+    }
+    if (shortDescription?.trim()) {
+      product.shortDescription = shortDescription;
+    }
+    if (tags?.trim) {
+      product.tags = tags;
+    }
+    if (status?.trim()) {
+      product.status = status;
+    }
+    if (isFeatured?.trim()) {
+      product.isFeatured = isFeatured;
+    }
+    if (brand?.trim()) {
+      const brandData = await brandModel.findOne({
+        $or: [
+          { name: { $regex: brand, $options: "i" } },
+          { slug: { $regex: brand, $options: "i" } },
+        ],
+      });
+      if (!brandData)
+        return res
+          .status(404)
+          .send({ message: "Brand Not found!", success: false });
+      product.brand = brandData._id;
+    }
+    if (category?.trim()) {
+      const categoryData = await categoryModel.findOne({
+        $or: [
+          { name: { $regex: category, $options: "i" } },
+          { slug: { $regex: category, $options: "i" } },
+        ],
+      });
+      if (!categoryData)
+        return res
+          .status(404)
+          .send({ message: "category not found!", success: false });
+      product.category = categoryData._id;
+    }
     if (req.file) {
       const oldPublicId = product.images?.publicId;
       if (oldPublicId) {
@@ -392,7 +398,13 @@ export const updateSingleProduct = async (req, res) => {
 
 export const deleteSingleProduct = async (req, res) => {
   try {
-    const productId = req.params.id;
+    const {productId} = req.params;
+    if (!mongoose.isValidObjectId(productId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid product ID",
+      });
+    }
     const product = await productModel.findByIdAndDelete(productId);
     if (!product)
       return res
