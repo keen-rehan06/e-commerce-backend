@@ -12,6 +12,8 @@ import brandRoute from "./src/routes/brand.route.js"
 import categoryRoute from "./src/routes/categories.route.js";
 import permissionRoute from "./src/routes/permission.route.js";
 import productRoute from "./src/routes/product.route.js";
+import variantRoute from "./src/routes/variant.route.js"
+
 
 ;(async()=>{
     try {
@@ -37,6 +39,7 @@ app.use("/",permissionRoute);
 app.use("/",brandRoute);
 app.use("/",productRoute);
 app.use("/",categoryRoute);
+app.use("/",variantRoute);
 
 app.get("/",(req,res)=>{
     res.send("Hello from E-commerce project.")

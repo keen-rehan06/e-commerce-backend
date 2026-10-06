@@ -6,7 +6,7 @@ import { v2 as uuid } from "uuid";
 
 export const createVariant = async (req, res) => {
   try {
-    const productId = req.params.id;
+    const {productId} = req.params;
     const {
       sku,
       price,
