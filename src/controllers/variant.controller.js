@@ -88,7 +88,9 @@ export const getAllVariants = async (req, res) => {
       .find(filter)
       .populate("product")
       .skip(skip)
-      .limit(Number(limit).sort({ createdAt: -1 }));
+      .limit(Number(limit))
+      .sort({ createdAt: -1 })
+      if(!variants) return res.status(200).send({message:"Variants not found!",success:true})
     const totalVariants = await variantModel.countDocuments(filter);
     await redis.set(cacheKey, JSON.stringify(variants), "EX", 300);
     return res.status(200).send({
@@ -111,7 +113,7 @@ export const getAllVariants = async (req, res) => {
 
 export const getSingleVariant = async (req, res) => {
   try {
-    const variantId = req.params.id;
+    const {variantId} = req.params;
     const cacheKey = `variant:${variantId}`;
     const cachedData = await redis.get(cacheKey);
     if (cacheKey)
