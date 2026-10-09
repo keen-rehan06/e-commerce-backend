@@ -148,7 +148,7 @@ export const getSingleVariant = async (req, res) => {
 
 export const updateSingleVarinat = async (req, res) => {
   try {
-    const variantId = req.params.id;
+    const {variantId} = req.params;
     const {
       sku,
       price,
@@ -164,13 +164,14 @@ export const updateSingleVarinat = async (req, res) => {
       return res
         .status(404)
         .send({ message: "Varinat not found!", success: false });
-    if (sku !== undefined) variant.sku = sku;
-    if (price !== undefined) variant.price = price;
-    if (compareAtPrice !== undefined) variant.compareAtPrice = compareAtPrice;
-    if (costPrice !== undefined) variant.costPrice = costPrice;
-    if (currency !== undefined) variant.currency = currency;
-    if (isDefault !== undefined) variant.isDefault = isDefault;
-    if (status !== undefined) variant.status = status;
+    if (sku?.trim()) variant.sku = sku;
+    if (price?.trim()) variant.price = price;
+    if (compareAtPrice?.trim()) variant.compareAtPrice = compareAtPrice;
+    if (costPrice?.trim()) variant.costPrice = costPrice;
+    if (currency?.trim()) variant.currency = currency;
+    if (isDefault?.trim()) variant.isDefault = isDefault;
+    if (status?.trim()) variant.status = status;
+
     if (req.file) {
       const oldPublicId = product.images?.publicId;
       if (oldPublicId) {
@@ -185,11 +186,11 @@ export const updateSingleVarinat = async (req, res) => {
     const updatedVariant = await variant.save();
 
     // Delete old Redis cache
-    await redis.del(`variant:${id}`);
+    await redis.del(`variant:${variantId}`);
 
     // Store updated variant in Redis
     await redis.set(
-      `variant:${id}`,
+      `variant:${variantId}`,
       JSON.stringify(updatedVariant),
       "EX",
       3600
@@ -212,7 +213,7 @@ export const updateSingleVarinat = async (req, res) => {
 
 export const deleteVariant = async (req,res) => {
   try {
-    const variantId = req.params.id;
+    const {variantId} = req.params;
     const cacheKey = `variant:${variantId}`; 
     const variant = await variantModel.findByIdAndDelete(variantId);
     if(!variant) return res.status(404).send({message:"Varinat not found!",success:false});
