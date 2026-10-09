@@ -116,13 +116,14 @@ export const getSingleVariant = async (req, res) => {
     const {variantId} = req.params;
     const cacheKey = `variant:${variantId}`;
     const cachedData = await redis.get(cacheKey);
-    if (cacheKey)
+    if (cachedData)
       return res.status(200).send({
         message: "variant fetched from cahced.",
         success: true,
         data: JSON.parse(cachedData),
       });
     const variant = await variantModel.findById(variantId).populate("product");
+    console.log(variant)
     if (!variant)
       return res
         .status(404)
