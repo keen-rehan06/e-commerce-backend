@@ -4,6 +4,6 @@ import express from "express";
 
 const app = express.Router();
 
-app.post("/api/create-inventory/:variant",isLoggedIn,authorize("SUPER_ADMIN","ADMIN"),createInventory);
+app.post("/api/create-inventory/:variantId",isLoggedIn,authorize("SUPER_ADMIN","ADMIN"),createInventory);
 
 export default app;

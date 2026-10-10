@@ -1,12 +1,18 @@
 import { variantModel } from "../models/variant.model.js";
 import { inventoryModel } from "../models/inventory.model.js";
 import redis from "../config/redis/redis.js";
+import mongoose from "mongoose";
 
 export const createInventory = async (req, res) => {
   try {
-    const {variantId} = req.params;
     const { quantity, reservedQuantity, lowStockThreshold, allowBackorder } =
-      req.body; 
+    req.body; 
+    const {variantId} = req.params;
+    if (!mongoose.isValidObjectId(variantId)) {
+  return res.status(400).json({
+    message: "Invalid variant ID"
+  });
+}
     const existingVariant = await variantModel.findById(variantId);
     if (!existingVariant)
       return res
@@ -92,7 +98,7 @@ export const getAllInventory = async (req, res) => {
       inventoryModel.countDocuments(filter),
     ]);
     if (inventory.length === 0) {
-      return res.status(404).send({
+      return res.status(200).send({
         message: "No Inventory found.",
         success: false
       })
