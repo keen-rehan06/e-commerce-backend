@@ -13,7 +13,7 @@ import categoryRoute from "./src/routes/categories.route.js";
 import permissionRoute from "./src/routes/permission.route.js";
 import productRoute from "./src/routes/product.route.js";
 import variantRoute from "./src/routes/variant.route.js"
-
+import inventoryRoute from "./src/routes/inventory.routes.js"
 
 ;(async()=>{
     try {
@@ -40,6 +40,7 @@ app.use("/",brandRoute);
 app.use("/",productRoute);
 app.use("/",categoryRoute);
 app.use("/",variantRoute);
+app.use("/",inventoryRoute)
 
 app.get("/",(req,res)=>{
     res.send("Hello from E-commerce project.")

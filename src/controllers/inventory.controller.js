@@ -4,15 +4,15 @@ import redis from "../config/redis/redis.js";
 
 export const createInventory = async (req, res) => {
   try {
-    const {variant} = req.params;
+    const {variantId} = req.params;
     const { quantity, reservedQuantity, lowStockThreshold, allowBackorder } =
       req.body; 
-    const existingVariant = await variantModel.findById(variant);
+    const existingVariant = await variantModel.findById(variantId);
     if (!existingVariant)
       return res
         .status(404)
         .send({ message: "Variant not found!", success: false });
-    const existingInventory = await inventoryModel.findOne({ variant });
+    const existingInventory = await inventoryModel.findOne({ variant:variantId });
     if (existingInventory) {
       return res.status(409).json({
         success: false,
@@ -20,7 +20,7 @@ export const createInventory = async (req, res) => {
       });
     }
     const inventory = await inventoryModel.create({
-      variant,
+      variant:variantId,
       quantity,
       reservedQuantity,
       lowStockThreshold,
@@ -104,7 +104,7 @@ export const getAllInventory = async (req, res) => {
         total,
         page: pageNumber,
         limit: limitNumber,
-        totalPages: Math.ceil(total / limitNumber);
+        totalPages: Math.ceil(total / limitNumber)
       }
     }
     // Save in Redis for 5 minutes
