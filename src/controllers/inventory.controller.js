@@ -4,7 +4,7 @@ import redis from "../config/redis/redis.js";
 
 export const createInventory = async (req, res) => {
   try {
-    const variant = req.params.id;
+    const {variant} = req.params;
     const { quantity, reservedQuantity, lowStockThreshold, allowBackorder } =
       req.body; 
     const existingVariant = await variantModel.findById(variant);
