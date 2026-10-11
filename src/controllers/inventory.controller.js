@@ -129,7 +129,7 @@ export const getAllInventory = async (req, res) => {
 
 export const getSingleInventory = async (req, res) => {
   try {
-    const inventoryId = req.params.id;
+    const {inventoryId} = req.params;
     const cacheKey = `inventory:${inventoryId}`;
     const cachedData = await redis.get(cacheKey);
     if (cachedData) {
@@ -141,7 +141,7 @@ export const getSingleInventory = async (req, res) => {
     }
     const inventory = await inventoryModel.findById(inventoryId).populate("variant")
 
-    if (!variant) return res.status(404).send(404).send({ message: "inventroy not found", success: false });
+    if (!inventory) return res.status(404).send(404).send({ message: "inventroy not found", success: false });
     // Store in Redis
     await redis.set(
       cacheKey,
@@ -167,7 +167,7 @@ export const getSingleInventory = async (req, res) => {
 
 export const updateInventory = async (req, res) => {
   try {
-    const inventoryId = req.params.id;
+    const {inventoryId} = req.params;
     const cacheKey = `inventory:${inventoryId}`;
     const inventory = await inventoryModel.findById(inventoryId);
     if (!inventory) return res.status(404).send({ message: 'Inventory not found!', success: false });
@@ -178,10 +178,10 @@ export const updateInventory = async (req, res) => {
       lowStockThreshold,
       allowBackorder
     } = req.body;
-    if (quantity !== undefined) inventory.quantity = quantity;
-    if (reservedQuantity !== undefined) inventory.reservedQuantity = reservedQuantity;
-    if (lowStockThreshold !== undefined) inventory.lowStockThreshold = lowStockThreshold;
-    if (allowBackorder !== undefined) inventory.allowBackorder = allowBackorder;
+    if (quantity?.trim()) inventory.quantity = quantity;
+    if (reservedQuantity?.trim()) inventory.reservedQuantity = reservedQuantity;
+    if (lowStockThreshold?.trim()) inventory.lowStockThreshold = lowStockThreshold;
+    if (allowBackorder?.trim()) inventory.allowBackorder = allowBackorder;
     await inventory.save();
 
     await redis.set(cacheKey, JSON.stringify(inventory), "EX", 300);
