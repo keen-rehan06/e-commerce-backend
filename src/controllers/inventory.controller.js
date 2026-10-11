@@ -135,13 +135,13 @@ export const getSingleInventory = async (req, res) => {
     if (cachedData) {
       return res.status(200).send({
         message: "Inventory fetched from cache",
-        inventroy: JSON.parse(cachedData)
+        ...JSON.parse(cachedData)
         , success: true
       });
     }
-    const inventory = await inventoryModel.findById(inventoryId).populate("variant")
+    const inventory = await inventoryModel.findById(inventoryId).populate("variant");
 
-    if (!inventory) return res.status(404).send(404).send({ message: "inventroy not found", success: false });
+    if (!inventory) return res.status(404).send({ message: "inventroy not found", success: false });
     // Store in Redis
     await redis.set(
       cacheKey,
@@ -202,7 +202,7 @@ export const updateInventory = async (req, res) => {
 
 export const deleteInventory = async (req, res) => {
   try {
-    const inventoryId = req.params.id;
+    const {inventoryId} = req.params;
     const cacheKey = `inventory:${inventoryId}`;
     const inventory = await inventoryModel.findByIdAndDelete(inventoryId);
     if (!inventory) return res.status(404).send({ message: "Inventory not found!", success: false });
