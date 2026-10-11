@@ -51,7 +51,6 @@ export const createInventory = async (req, res) => {
 export const getAllInventory = async (req, res) => {
   try {
     const {
-      variant,
       allowBackorder,
       lowstock,
       page = 1,
@@ -59,9 +58,6 @@ export const getAllInventory = async (req, res) => {
       sort = "-createdAt",
     } = req.query;
     const filter = {};
-    if (variant) {
-      filter.variant = variant;
-    }
     if (allowBackorder !== undefined) {
       filter.allowBackorder = allowBackorder === "true";
     }
@@ -78,7 +74,7 @@ export const getAllInventory = async (req, res) => {
     const pageNumber = Number(page);
     const limitNumber = Number(limit);
     const skip = (pageNumber - 1) * limitNumber;
-    const cacheKey = `inventory:${variant || "all"}:${allowBackorder || "all"}:${lowstock || "all"}:${pageNumber}:${limitNumber}:${sort}`;
+    const cacheKey = `inventory:${allowBackorder || "all"}:${lowstock || "all"}:${pageNumber}:${limitNumber}:${sort}`;
     const cachedInventory = await redis.get(cacheKey);
     if (cachedInventory) {
       return res.status(200).send({
@@ -126,7 +122,7 @@ export const getAllInventory = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to fetch inventory",
-      error: error.message,
+      error,
     });
   }
 }
