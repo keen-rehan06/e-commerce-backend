@@ -15,7 +15,7 @@ export const createOrder = async (req, res) => {
   try {
     const userId = req.user.id;
     const { addressId, paymentMethod, source, quantity } = req.body;
-    const variantId = req.params.id;
+    const {variantId} = req.params;
     // Validate basic fields
     if (!addressId || !paymentMethod || !source)
       return res.status(400).json({

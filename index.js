@@ -15,6 +15,7 @@ import productRoute from "./src/routes/product.route.js";
 import variantRoute from "./src/routes/variant.route.js"
 import inventoryRoute from "./src/routes/inventory.routes.js"
 
+
 ;(async()=>{
     try {
         await connectDb();
