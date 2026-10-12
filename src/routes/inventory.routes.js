@@ -14,6 +14,6 @@ app.post("/api/create-inventory/:variantId",isLoggedIn,authorize("SUPER_ADMIN","
 app.get("/api/get-inventories",isLoggedIn,authorize("SUPER_ADMIN","ADMIN"),getAllInventory);
 app.get("/api/get-inventory/:inventoryId",isLoggedIn,authorize("SUPER_ADMIN","ADMIN"),getSingleInventory);
 app.patch("/api/update-inventory/:inventoryId",isLoggedIn,authorize("SUPER_ADMIN","ADMIN"),updateInventory);
-app.delete("/api/delete-inventory:inventoryId",isLoggedIn,authorize("SUPER_ADMIN","ADMIN"),deleteInventory);
+app.delete("/api/delete-inventory/:inventoryId",isLoggedIn,authorize("SUPER_ADMIN","ADMIN"),deleteInventory);
 
 export default app;
