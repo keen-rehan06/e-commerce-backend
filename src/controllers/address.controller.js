@@ -3,6 +3,7 @@ import redis from "../config/redis/redis.js";
 
 export const addAddress = async (req, res) => {
   try {
+    const userId = req.user.id;
     const {
       fullName,
       phone,
@@ -55,6 +56,7 @@ export const addAddress = async (req, res) => {
       address,
     });
   } catch (error) {
+    console.log(error.message)
     return res.status(500).json({
       success: false,
       message: "Failed to add address",
