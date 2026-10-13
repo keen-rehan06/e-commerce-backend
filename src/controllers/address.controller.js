@@ -56,7 +56,7 @@ export const addAddress = async (req, res) => {
       address,
     });
   } catch (error) {
-    console.log(error.message)
+    console.log(error.message);
     return res.status(500).json({
       success: false,
       message: "Failed to add address",
@@ -73,13 +73,13 @@ export const getMyAddress = async (req, res) => {
     if (cachedData)
       return res.status(200).send({
         message: "address fetched from redis.",
-        ...JSON.parse(cacheKey),
+        data: JSON.parse(cacheKey),
         success: true,
       });
     const addresses = await addressModel
       .find({ user: userId })
       .sort({ isDefault: -1, createdAt: -1 });
-    await redis.set(cacheKey, ...JSON.stringify, "EX", 300);
+    await redis.set(cacheKey, JSON.stringify, "EX", 300);
     return res
       .status(200)
       .send({ message: "address fetched from db", success: true, addresses });
@@ -95,14 +95,14 @@ export const getMyAddress = async (req, res) => {
 
 export const getSingleAddress = async (req, res) => {
   try {
-    const addressId = req.params.id;
+    const { addressId } = req.params;
     const cacheKey = `getsingleaddress:${addressId}`;
     const cachedData = await redis.get(cacheKey);
     if (cachedData)
       return res.status(200).send({
         message: "Address fetched from cache.",
         success: true,
-        ...JSON.parse(cachedData),
+        data: JSON.parse(cachedData),
       });
     const address = await addressModel.findOne({
       _id: addressId,
@@ -113,7 +113,7 @@ export const getSingleAddress = async (req, res) => {
         success: false,
         message: "Address not found",
       });
-    await redis.set(cacheKey, ...JSON.stringify(address), "EX", 300);
+    await redis.set(cacheKey, JSON.stringify(address), "EX", 300);
 
     return res.status(200).json({
       success: true,
@@ -131,8 +131,8 @@ export const getSingleAddress = async (req, res) => {
 
 export const updateAddress = async (req, res) => {
   try {
-    const addressId = req.params.id;
-        const cacheKey = `getsingleaddress:${addressId}`;
+    const { addressId } = req.params;
+    const cacheKey = `getsingleaddress:${addressId}`;
     const address = await addressModel.findOne({
       _id: addressId,
       user: req.user.id,
@@ -158,66 +158,69 @@ export const updateAddress = async (req, res) => {
     if (isDefault === true && address.isDefault !== true) {
       await addressModel.updateMany(
         {
-        user:req.user.id,
-        _id: {$ne:addressId},
-        isDefault:true
-      },
-      {
-         $set: { isDefault: false },
-      }
-    )
+          user: req.user.id,
+          _id: { $ne: addressId },
+          isDefault: true,
+        },
+        {
+          $set: { isDefault: false },
+        },
+      );
     }
 
     // Update only provided fields
-    if(fullName !== undefined) address.fullName = fullName;
-    if (phone !== undefined) address.phone = phone;
-    if (addressLine1 !== undefined) address.addressLine1 = addressLine1;
-    if (addressLine2 !== undefined) address.addressLine2 = addressLine2;
-    if (city !== undefined) address.city = city;
-    if (state !== undefined) address.state = state;
-    if (postalCode !== undefined) address.postalCode = postalCode;
-    if (country !== undefined) address.country = country;
-    if (landmark !== undefined) address.landmark = landmark;
-    if (addressType !== undefined) address.addressType = addressType;
-    if (isDefault !== undefined) address.isDefault = isDefault;
+    if (fullName?.trim()) address.fullName = fullName;
+    if (phone?.trim()) address.phone = phone;
+    if (addressLine1?.trim()) address.addressLine1 = addressLine1;
+    if (addressLine2?.trim()) address.addressLine2 = addressLine2;
+    if (city?.trim()) address.city = city;
+    if (state?.trim()) address.state = state;
+    if (postalCode?.trim()) address.postalCode = postalCode;
+    if (country?.trim()) address.country = country;
+    if (landmark?.trim()) address.landmark = landmark;
+    if (addressType?.trim()) address.addressType = addressType;
+    if (isDefault?.trim()) address.isDefault = isDefault;
 
     const updatedAddress = await address.save();
     return res.status(200).send({
-      message:"Address updated successfully!",
-      success:true,
-      address:updatedAddress
-    })
+      message: "Address updated successfully!",
+      success: true,
+      address: updatedAddress,
+    });
   } catch (error) {
     console.error("Update Address Error:", error.message);
 
     return res.status(500).json({
       success: false,
       message: "Internal server error",
-      error
+      error,
     });
   }
 };
 
-export const deleteAddress = async (req,res) => {
+export const deleteAddress = async (req, res) => {
   try {
     const addressId = req.params.id;
     const cacheKey = `getsingleaddress:${addressId}`;
     const address = await addressModel.findOneAndDelete({
-      _id:addressId,
-      user:req.user.id
+      _id: addressId,
+      user: req.user.id,
     });
-    if(!address) return res.status(404).send({message:"Address not found!",success:false});
+    if (!address)
+      return res
+        .status(404)
+        .send({ message: "Address not found!", success: false });
     await redis.del(cacheKey);
-     return res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Address deleted successfully",
     });
   } catch (error) {
-     console.error("Delete Address Error:", error.message);
+    console.error("Delete Address Error:", error.message);
     return res.status(500).json({
       success: false,
       message: "Internal server error",
-      error
+      error,
     });
   }
-}
+};
