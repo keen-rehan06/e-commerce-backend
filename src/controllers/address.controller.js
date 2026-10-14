@@ -179,7 +179,7 @@ export const updateAddress = async (req, res) => {
     if (country?.trim()) address.country = country;
     if (landmark?.trim()) address.landmark = landmark;
     if (addressType?.trim()) address.addressType = addressType;
-    if (isDefault?.trim()) address.isDefault = isDefault;
+    if (isDefault !== undefined) address.isDefault = isDefault;
 
     const updatedAddress = await address.save();
     return res.status(200).send({
@@ -200,7 +200,7 @@ export const updateAddress = async (req, res) => {
 
 export const deleteAddress = async (req, res) => {
   try {
-    const addressId = req.params.id;
+    const {addressId} = req.params;
     const cacheKey = `getsingleaddress:${addressId}`;
     const address = await addressModel.findOneAndDelete({
       _id: addressId,
