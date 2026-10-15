@@ -192,7 +192,7 @@ export const removeCartItem = async (req,res) => {
   try {
     const {variantId} = req.params;
     const userId = req.user.id;
-    const cart = await cartModel.findOne({
+    const cart = await cartModel.findOneAndDelete({
       user:userId
     });
     if(!cart) return res.status(404).send({message:"Message not found!",success:false})
@@ -223,7 +223,7 @@ export const clearCart = async (req,res) => {
   try {
     const userId = req.user.id;
     const cacheKey = `cart:${userId}`;
-    const cart = await cartModel.findOne({
+    const cart = await cartModel.findOneAndDelete({
       user:userId
     });
     if(!cart) return res.status(404).send({
