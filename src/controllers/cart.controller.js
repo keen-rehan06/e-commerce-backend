@@ -190,7 +190,7 @@ export const updateMyCart = async (req,res) => {
 
 export const removeCartItem = async (req,res) => {
   try {
-    const {variantId} = req.params.id;
+    const {variantId} = req.params;
     const userId = req.user.id;
     const cart = await cartModel.findOne({
       user:userId
