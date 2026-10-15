@@ -191,15 +191,14 @@ export const getMyAllOrder = async (req, res) => {
         .find({ user: userId })
         .populate("items.product")
         .populate("items.variant")
-        .populate("address")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
 
-      orderModel.createDocuments({ user: userId }),
+      orderModel.countDocuments({ user: userId }),
     ]);
 
-    await redis.set(cacheKey, ...JOSN.stringify(orders), "EX", 300);
+    await redis.set(cacheKey, JSON.stringify(orders), "EX", 300);
 
     return res.status(200).send({
       message: "Orders fetched from db successfully!",
@@ -224,14 +223,14 @@ export const getMyAllOrder = async (req, res) => {
 export const getSingleOrder = async (req, res) => {
   try {
     const userId = req.user.id;
-    const orderId = req.params.id;
+    const {orderId} = req.params;
     const cacheKey = `order:${userId}`;
     const cacheData = await redis.get(cacheKey);
     if (cacheData) {
       return res.status(200).send({
         message: "Orders fetch successfully!",
         source: "redis",
-        ...JSON.parse(cacheData),
+        data:JSON.parse(cacheData),
         success: true,
       });
     }
@@ -241,15 +240,14 @@ export const getSingleOrder = async (req, res) => {
         user: userId,
       })
       .populate("items.product")
-      .populate("items.variant")
-      .populate("address");
+      .populate("items.variant");
 
     if (!order)
       return res.status(404).send({
         message: "Order not found!",
         success: false,
       });
-    await redis.set(cacheKey, ...JOSN.stringify(order), "EX", 300);
+    await redis.set(cacheKey, JSON.stringify(order), "EX", 300);
 
     return res.status(200).send({
       message: "Order fetched successfully!",
@@ -258,6 +256,8 @@ export const getSingleOrder = async (req, res) => {
       order,
     });
   } catch (error) {
+    console.log(error);
+    console.log("----------ERROR-----------");
     console.log(error.message);
     return res
       .status(500)

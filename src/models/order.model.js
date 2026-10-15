@@ -24,7 +24,6 @@ const orderItemSchema = new mongoose.Schema(
     },
     subtotal: {
       type: Number,
-      required: true,
       min: 0,
     },
   },
@@ -97,7 +96,6 @@ const orderSchema = new mongoose.Schema(
     },
     shippingAddress: {
       type: shippingAddressSchema,
-      required: true,
     },
     totalAmount: {
       type: Number,
