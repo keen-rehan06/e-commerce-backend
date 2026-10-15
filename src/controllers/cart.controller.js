@@ -230,13 +230,10 @@ export const clearCart = async (req,res) => {
       message:"cart not found!",
       successs:false
     });
-    cart.items = [];
-    await cart.save();
     await redis.del(cacheKey);
     return res.status(200).json({
       success: true,
       message: "Cart cleared successfully",
-      cart,
     });
   } catch (error) {
     console.log(error.message);

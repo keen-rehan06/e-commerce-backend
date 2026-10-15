@@ -16,6 +16,7 @@ import variantRoute from "./src/routes/variant.route.js"
 import inventoryRoute from "./src/routes/inventory.routes.js"
 import addressRoute from "./src/routes/address.routes.js";
 import cartRoute from "./src/routes/cart.routes.js"
+import orderRoute from "./src/routes/order.routes.js"
 
 ;(async()=>{
     try {
@@ -45,6 +46,7 @@ app.use("/",variantRoute);
 app.use("/",inventoryRoute)
 app.use("/",addressRoute);
 app.use("/",cartRoute);
+app.use("/",orderRoute);
 
 app.get("/",(req,res)=>{
     res.send("Hello from E-commerce project.")
