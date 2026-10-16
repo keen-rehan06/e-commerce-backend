@@ -4,7 +4,7 @@ import redis from "../config/redis/redis.js";
 
 export const addToWishlist = async (req, res) => {
   try {
-    const productId = req.params.id;
+    const {productId} = req.params;
     const userId = req.user.id;
     const product = await productModel.findById(productId);
     if (!product)
