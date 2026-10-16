@@ -272,7 +272,7 @@ export const releaseInventory = async ({ variantId, quantity }) => {
   } catch (error) {
     console.log(error)
     console.log(error.message);
-    throw new Error("Something went wrong!");
+    // throw new Error("Something went wrong!");
   }
 }
 

@@ -224,7 +224,7 @@ export const getSingleOrder = async (req, res) => {
   try {
     const userId = req.user.id;
     const {orderId} = req.params;
-    const cacheKey = `order:${userId}`;
+    const cacheKey = `order:${orderId}`;
     const cacheData = await redis.get(cacheKey);
     if (cacheData) {
       return res.status(200).send({
@@ -256,9 +256,9 @@ export const getSingleOrder = async (req, res) => {
       order,
     });
   } catch (error) {
-    console.log(error);
-    console.log("----------ERROR-----------");
     console.log(error.message);
+    console.log("----------ERROR-----------");
+    console.log(error);
     return res
       .status(500)
       .send({ message: "failed to fetched order", success: false, error });
@@ -268,7 +268,7 @@ export const getSingleOrder = async (req, res) => {
 export const cancelOrder = async (req, res) => {
   try {
     const userId = req.user.id;
-    const orderId = req.params.id;
+    const {orderId} = req.params;
 
     const order = await orderModel.findOne({
       _id: orderId,
@@ -295,7 +295,7 @@ export const cancelOrder = async (req, res) => {
     }
 
     for (const items of order.items) {
-      await releaseInventory({
+        releaseInventory({
         variantId: items.variant,
         quantity: items.quantity,
       });
