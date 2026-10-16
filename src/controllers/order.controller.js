@@ -353,12 +353,11 @@ export const getAllOrders = async (req, res) => {
         .populate("user", "name email")
         .populate("items.variant")
         .populate("items.product")
-        .populate("address")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
 
-      orderModel.createDocuments(filter),
+      orderModel.countDocuments(filter),
     ]);
     return res.status(200).send({
       message: "Orders fetched successfully!",
@@ -385,15 +384,15 @@ export const getAllOrders = async (req, res) => {
 export const updateOrder = async (req, res) => {
   try {
     const { status } = req.body;
-    const orderId = req.params;
+    const {orderId} = req.params;
     const allowedStatuses = ["CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED"];
     if (!status)
-      return res.status(401).send({
+      return res.status(401).send({ 
         message: "Order status is required!",
         success: false,
       });
 
-    const newStatus = status.toUppercase();
+    const newStatus = status.toUpperCase();
 
     if (!allowedStatuses.includes(newStatus))
       return res.status(400).send({
