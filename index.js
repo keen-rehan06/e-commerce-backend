@@ -18,6 +18,7 @@ import addressRoute from "./src/routes/address.routes.js";
 import cartRoute from "./src/routes/cart.routes.js"
 import orderRoute from "./src/routes/order.routes.js"
 import wishListRoute from "./src/routes/wishlist.route.js";
+import reviewRoute from "./src/routes/reviews.routes.js";
 
 ;(async()=>{
     try {
@@ -48,7 +49,8 @@ app.use("/",inventoryRoute)
 app.use("/",addressRoute);
 app.use("/",cartRoute);
 app.use("/",orderRoute);
-app.use("/",wishListRoute)
+app.use("/",wishListRoute);
+app.use("/",reviewRoute)
 
 app.get("/",(req,res)=>{
     res.send("Hello from E-commerce project.")

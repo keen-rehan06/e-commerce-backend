@@ -5,7 +5,7 @@ import redis from "../config/redis/redis.js";
 
 export const createReview = async (req, res) => {
   try {
-    const productId = req.params.id;
+    const {productId} = req.params
     const { orderId, rating, comment } = req.body;
     const userId = req.user.id;
 
