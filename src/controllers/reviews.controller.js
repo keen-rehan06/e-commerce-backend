@@ -73,7 +73,7 @@ export const createReview = async (req, res) => {
 
 export const getProductReviews = async (req, res) => {
   try {
-    const productId = req.params.id;
+    const {productId} = req.params;
     const cacheKey = `reviews:${productId}`;
     const cacheData = await redis.get(cacheKey);
     if (cacheData)
@@ -97,7 +97,7 @@ export const getProductReviews = async (req, res) => {
     if (reviews.length < 1)
       return res.status(200).send({ message: "No reviews!", success: true });
 
-    await redis.set(cacheKey, ...JSON.stringify(reviews), "EX", 300);
+    await redis.set(cacheKey, JSON.stringify(reviews), "EX", 300);
     return res.status(200).send({
       message: "reviews fetched successfully!",
       success: true,
@@ -116,7 +116,7 @@ export const getProductReviews = async (req, res) => {
 
 export const updateReview = async (req, res) => {
   try {
-    const reviewId = req.params.id;
+    const {reviewId} = req.params;
     const userId = req.user.id;
     const { comment, rating } = req.body;
     const cacheKey = `reviews:${productId}`;
